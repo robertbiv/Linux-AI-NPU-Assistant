@@ -8,16 +8,20 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.tools import (
-    ManPageTool,
-    SearchInFilesTool,
     ToolPermissions,
     ToolRegistry,
     ToolResult,
-    WebSearchTool,
-    _extract_sections,
-    _strip_man_formatting,
+    SearchResult,
     build_default_registry,
 )
+from src.tools.find_files      import FindFilesTool
+from src.tools.search_in_files import SearchInFilesTool
+from src.tools.web_search      import WebSearchTool
+from src.tools.web_fetch       import WebFetchTool
+from src.tools.man_reader      import ManPageTool, _extract_sections, _strip_man_formatting
+from src.tools.system_control  import SystemControlTool
+from src.tools.app             import AppTool
+from src.tools.system_info     import SystemInfoTool
 
 
 # ── _strip_man_formatting ─────────────────────────────────────────────────────
@@ -117,14 +121,14 @@ class TestManPageTool:
             result = tool.run({"command": bad})
             assert result.error, f"Expected error for {bad!r}"
 
-    @patch("src.tools.shutil.which", return_value=None)
+    @patch("shutil.which", return_value=None)
     def test_man_not_installed(self, _which):
         tool = ManPageTool()
         result = tool.run({"command": "ls"})
         assert "not installed" in result.error
 
-    @patch("src.tools.shutil.which", return_value="/usr/bin/man")
-    @patch("src.tools.subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/man")
+    @patch("subprocess.run")
     def test_successful_lookup(self, mock_run, _which):
         mock_run.return_value = _make_completed_process(_SAMPLE_MAN)
         tool = ManPageTool(max_chars=5000, default_sections=["SYNOPSIS", "OPTIONS"])
@@ -133,8 +137,8 @@ class TestManPageTool:
         assert result.results
         assert "ls [OPTION]" in result.results[0].snippet
 
-    @patch("src.tools.shutil.which", return_value="/usr/bin/man")
-    @patch("src.tools.subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/man")
+    @patch("subprocess.run")
     def test_unknown_command_returns_error(self, mock_run, _which):
         mock_run.return_value = _make_completed_process("", returncode=1,
                                                         stderr="No manual entry for notacommand")
@@ -143,8 +147,8 @@ class TestManPageTool:
         assert result.error
         assert "notacommand" in result.error
 
-    @patch("src.tools.shutil.which", return_value="/usr/bin/man")
-    @patch("src.tools.subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/man")
+    @patch("subprocess.run")
     def test_truncation(self, mock_run, _which):
         long_text = "A" * 20_000
         mock_run.return_value = _make_completed_process(long_text)
@@ -153,8 +157,8 @@ class TestManPageTool:
         assert result.truncated
         assert len(result.results[0].snippet) == 100
 
-    @patch("src.tools.shutil.which", return_value="/usr/bin/man")
-    @patch("src.tools.subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/man")
+    @patch("subprocess.run")
     def test_caller_can_request_sections(self, mock_run, _which):
         mock_run.return_value = _make_completed_process(_SAMPLE_MAN)
         tool = ManPageTool(default_sections=["DESCRIPTION"])
@@ -162,8 +166,8 @@ class TestManPageTool:
         assert not result.error
         assert "ls -la /tmp" in result.results[0].snippet
 
-    @patch("src.tools.shutil.which", return_value="/usr/bin/man")
-    @patch("src.tools.subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/man")
+    @patch("subprocess.run")
     def test_man_section_number_passed(self, mock_run, _which):
         mock_run.return_value = _make_completed_process(_SAMPLE_MAN)
         tool = ManPageTool(default_sections=[])
@@ -172,8 +176,8 @@ class TestManPageTool:
         assert "5" in call_args
         assert "passwd" in call_args
 
-    @patch("src.tools.shutil.which", return_value="/usr/bin/man")
-    @patch("src.tools.subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/man")
+    @patch("subprocess.run")
     def test_fallback_to_full_page_when_sections_missing(self, mock_run, _which):
         # Page that has no standard section headers
         plain_page = "This command does something.\nUsage: cmd [options]\n"
@@ -318,7 +322,7 @@ class TestToolRegistry:
 
 
 class TestWebSearchTool:
-    @patch("src.tools.subprocess.Popen")
+    @patch("subprocess.Popen")
     def test_opens_correct_url(self, mock_popen):
         tool = WebSearchTool(default_engine="duckduckgo")
         result = tool.run({"query": "hello world"})
@@ -327,7 +331,7 @@ class TestWebSearchTool:
         assert call_args[0] == "xdg-open"
         assert "hello+world" in call_args[1] or "hello%20world" in call_args[1]
 
-    @patch("src.tools.subprocess.Popen")
+    @patch("subprocess.Popen")
     def test_engine_override(self, mock_popen):
         tool = WebSearchTool(default_engine="duckduckgo")
         result = tool.run({"query": "test", "engine": "brave"})
@@ -345,7 +349,7 @@ class TestWebSearchTool:
         result = tool.run({"query": ""})
         assert result.error
 
-    @patch("src.tools.subprocess.Popen", side_effect=FileNotFoundError)
+    @patch("subprocess.Popen", side_effect=FileNotFoundError)
     def test_xdg_open_missing_returns_error(self, _popen):
         tool = WebSearchTool()
         result = tool.run({"query": "test"})

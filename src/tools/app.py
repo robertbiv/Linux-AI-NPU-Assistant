@@ -26,6 +26,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from src.tools._base import SearchResult, ToolResult
+
 logger = logging.getLogger(__name__)
 
 # Standard locations for .desktop files
@@ -219,8 +221,6 @@ class AppTool:
     }
 
     def run(self, args: dict[str, Any]):  # noqa: ANN201
-        from src.tools import SearchResult, ToolResult  # avoid circular at module level
-
         action: str = args.get("action", "").strip().lower()
         name: str = args.get("name", "").strip()
 

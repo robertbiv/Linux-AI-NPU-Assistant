@@ -32,6 +32,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.tools._base import SearchResult, ToolResult
+
 logger = logging.getLogger(__name__)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -415,8 +417,6 @@ class SystemInfoTool:
     }
 
     def run(self, args: dict[str, Any]):  # noqa: ANN201
-        from src.tools import SearchResult, ToolResult  # avoid circular import
-
         topic: str = args.get("topic", "").strip().lower()
         valid = set(_QUERIES) | {"all"}
         if topic not in valid:

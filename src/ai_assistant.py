@@ -88,9 +88,28 @@ class AIAssistant:
         ``backend == "npu"``.
     """
 
-    def __init__(self, config, npu_manager=None) -> None:  # noqa: ANN001
+    def __init__(self, config, npu_manager=None, registry=None, os_info=None) -> None:  # noqa: ANN001
         self._config = config
         self._npu_manager = npu_manager
+        self._registry = registry    # ToolRegistry | None
+        self._os_info = os_info      # OSInfo | None
+
+    def _build_system_prompt(self) -> str:
+        """Build a fresh system prompt combining base instructions, OS info,
+        and the tool list.  Called on every request so it is always current."""
+        parts = [
+            "You are a helpful AI assistant running locally on the user's "
+            "Linux computer. You can see their screen, answer questions, "
+            "help craft shell commands, and control system settings. "
+            "Always be concise and accurate.",
+        ]
+        if self._os_info is not None:
+            parts.append(self._os_info.to_system_prompt_block())
+        if self._registry is not None:
+            tool_section = self._registry.system_prompt_section()
+            if tool_section:
+                parts.append(tool_section)
+        return "\n\n".join(parts)
 
     # ── Main entry point ──────────────────────────────────────────────────────
 
@@ -170,11 +189,14 @@ class AIAssistant:
         timeout = cfg.get("timeout", 120)
         stream = self._config.resources.get("stream_response", True)
 
-        # Build previous-turn messages from history
+        # Build previous-turn messages from history, prepend system prompt
+        system_msg: dict = {"role": "system", "content": self._build_system_prompt()}
         if history is not None:
-            messages = history.to_ollama_messages(max_context=max_context)
+            messages = [system_msg] + history.to_ollama_messages(
+                include_system=False, max_context=max_context
+            )
         else:
-            messages = []
+            messages = [system_msg]
 
         # Collect images to attach to the current user turn
         images_b64: list[str] = []
@@ -261,11 +283,14 @@ class AIAssistant:
         timeout = cfg.get("timeout", 60)
         stream = self._config.resources.get("stream_response", True)
 
-        # Start from persisted conversation history
+        # Start from persisted conversation history, prepend system prompt
+        system_msg: dict = {"role": "system", "content": self._build_system_prompt()}
         if history is not None:
-            messages = history.to_openai_messages(max_context=max_context)
+            messages = [system_msg] + history.to_openai_messages(
+                include_system=False, max_context=max_context
+            )
         else:
-            messages = []
+            messages = [system_msg]
 
         # Build the current user message with optional images
         user_text = _build_text_prompt(prompt, attachment_texts)

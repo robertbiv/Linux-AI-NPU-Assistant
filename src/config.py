@@ -121,6 +121,8 @@ _DEFAULTS: dict[str, Any] = {
             "/proc",
             "/sys",
         ],
+        # Global default: release each tool instance after every call.
+        "unload_after_use": False,
         # ── Tool permissions ──────────────────────────────────────────────────
         # allowed: whitelist of tool names the AI may call.
         #   - Empty list [] means ALL registered tools are allowed (default).
@@ -132,9 +134,7 @@ _DEFAULTS: dict[str, Any] = {
         # requires_approval: tools whose invocations must be confirmed by the
         #   user before they execute.  The confirmation prompt shows the tool
         #   name and the exact arguments the AI supplied.
-        #   web_search and web_fetch are here by default because they interact
-        #   with external resources.
-        "requires_approval": ["web_search", "web_fetch"],
+        "requires_approval": ["web_search", "web_fetch", "system_control", "app"],
         # Man page reader tool
         "man_reader": {
             # Set to false to remove read_man_page from the tool registry
@@ -146,6 +146,22 @@ _DEFAULTS: dict[str, Any] = {
             # Section names extracted by default when the AI doesn't ask for
             # specific ones.  Use [] to return the full page.
             "default_sections": ["SYNOPSIS", "OPTIONS", "EXAMPLES"],
+            "unload_after_use": True,
+        },
+        # ── System control tool ───────────────────────────────────────────────
+        "system_control": {
+            "enabled": True,
+            "unload_after_use": False,
+        },
+        # ── App tool ──────────────────────────────────────────────────────────
+        "app": {
+            "enabled": True,
+            "unload_after_use": False,
+        },
+        # ── System info tool ──────────────────────────────────────────────────
+        "system_info": {
+            "enabled": True,
+            "unload_after_use": False,
         },
         # ── Web fetch tool ────────────────────────────────────────────────────
         # DISABLED BY DEFAULT — requires explicit opt-in.
