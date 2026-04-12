@@ -150,10 +150,10 @@ def detect() -> ShellInfo:
         logger.debug("shell_detector: detected from parent proc: %s", parent)
         return _from_path(parent)
 
-    # 3. /etc/passwd
+    # 3. System user database
     etc_shell = _from_passwd()
     if etc_shell and Path(etc_shell).exists():
-        logger.debug("shell_detector: using shell from /etc/passwd: %s", etc_shell)
+        logger.debug("shell_detector: using system login shell: %s", etc_shell)
         return _from_path(etc_shell)
 
     # 4. Fallback
