@@ -26,10 +26,13 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shlex
 import stat
 import tempfile
 from pathlib import Path
+
+from src import config, security
 
 logger = logging.getLogger(__name__)
 
@@ -90,40 +93,28 @@ _CMD={quoted}
 printf 'Edit if needed, then press \\033[1mEnter\\033[0m to run  (Ctrl-C to cancel):\\n\\n'
 read -r -e -p '$ ' -i "$_CMD" _CONFIRMED
 if [ -n "$_CONFIRMED" ]; then
-    eval "$_CONFIRMED"
+    sh -c "$_CONFIRMED"
 fi
 printf '\\n\\033[2m[Press Enter to close]\\033[0m'
 read -r _DONE
 """
 
-# zsh: vared — ZLE variable editor that accepts an initial value
+# zsh: push to editing buffer (print -z) and enter interactive mode
 _ZSH_SCRIPT = """\
 #!/usr/bin/env zsh
 _CMD={quoted}
 """ + _BANNER + """\
-printf 'Edit if needed, then press \\e[1mEnter\\e[0m to run  (Ctrl-C to cancel):\\n\\n'
-vared -p '$ ' -c _CMD
-if [ -n "$_CMD" ]; then
-    eval "$_CMD"
-fi
-printf '\\n\\e[2m[Press Enter to close]\\e[0m'
-read -r _DONE
+print -z -- "$_CMD"
+printf 'Command pushed to buffer.  Edit if needed, then press \\e[1mEnter\\e[0m to run.\\n'
+exec zsh -i
 """
 
 # fish: --init-command sets the commandline buffer before the prompt appears
-# We wrap in a shell script that execs fish with the right flags.
 _FISH_WRAPPER = """\
 #!/bin/sh
 _CMD={quoted}
-exec fish --init-command "
-  function _ai_prefill
-    commandline -- '$_CMD'
-    commandline --cursor (string length -- '$_CMD')
-    functions --erase _ai_prefill
-  end
-  bind \\r '_ai_prefill; commandline -f execute'
-  bind \\n '_ai_prefill; commandline -f execute'
-" 2>/dev/null || exec fish
+export _CMD
+exec fish --init-command 'commandline -- "$_CMD"; commandline -f repaint' 2>/dev/null || exec fish
 """
 
 # ksh / mksh: read supports -e (readline) but not -i; display cmd and prompt
@@ -136,7 +127,7 @@ printf '$ %s' "$_CMD"
 read -r _CONFIRMED
 _CONFIRMED="${_CONFIRMED:-$_CMD}"
 if [ -n "$_CONFIRMED" ]; then
-    eval "$_CONFIRMED"
+    sh -c "$_CONFIRMED"
 fi
 printf '\\n[Press Enter to close]'
 read -r _DONE
@@ -176,6 +167,21 @@ def _pick_script(shell_family: str, quoted_cmd: str) -> tuple[str, str]:
 # Public API
 # ---------------------------------------------------------------------------
 
+def _is_blocked(command: str) -> bool:
+    """Return True if command matches any blocked pattern in config."""
+    try:
+        cfg = config.load()
+        blocked_patterns = [
+            re.compile(p) for p in cfg.safety.get("blocked_commands", [])
+        ]
+        for pattern in blocked_patterns:
+            if pattern.search(command):
+                return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
 def open_with_command(command: str) -> tuple[bool, str]:
     """Open the user's default terminal pre-filled with *command*.
 
@@ -187,6 +193,15 @@ def open_with_command(command: str) -> tuple[bool, str]:
     (success, message)
     """
     import subprocess
+
+    # 1. Sanitize: remove hidden/control characters
+    command = security.sanitize_ai_response(command)
+
+    # 2. Blocklist check
+    if _is_blocked(command):
+        msg = f"Command blocked by safety policy: {command}"
+        logger.warning("terminal_launcher: %s", msg)
+        return False, msg
 
     terminal_info = _find_terminal()
     if terminal_info is None:
