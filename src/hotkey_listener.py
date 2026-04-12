@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Hotkey / Copilot-button listener.
 
 Two detection strategies are attempted in order:

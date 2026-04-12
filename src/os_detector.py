@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """OS detection for the Linux AI NPU Helper.
 
 Detects the running Linux distribution and environment so the AI assistant

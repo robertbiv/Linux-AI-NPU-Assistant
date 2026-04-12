@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Diagnostic window — live status dashboard with integrated test runner.
 
 Shows the health of every application subsystem in real time.  All status

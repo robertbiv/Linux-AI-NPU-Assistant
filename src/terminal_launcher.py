@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Terminal launcher — open the user's terminal pre-filled with a command.
 
 The command is inserted into the terminal's readline / editing buffer so the

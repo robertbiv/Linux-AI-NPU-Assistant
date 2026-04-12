@@ -79,6 +79,75 @@ class TestModelCatalog:
                 f"{e.name!r} onnx_filename={e.onnx_filename!r}"
             )
 
+    # ── TOS fields ────────────────────────────────────────────────────────────
+
+    def test_tos_entries_have_tos_url(self):
+        for e in MODEL_CATALOG:
+            if e.requires_tos:
+                assert e.tos_url, f"{e.name!r} requires_tos=True but tos_url is empty"
+
+    def test_tos_entries_have_tos_summary(self):
+        for e in MODEL_CATALOG:
+            if e.requires_tos:
+                assert len(e.tos_summary) >= 20, (
+                    f"{e.name!r} requires_tos=True but tos_summary too short"
+                )
+
+    def test_non_tos_entries_no_requires_flag(self):
+        mit_entries = [e for e in MODEL_CATALOG if e.license_spdx == "MIT"]
+        for e in mit_entries:
+            assert not e.requires_tos, (
+                f"MIT-licensed entry {e.name!r} should not require TOS"
+            )
+
+    def test_gemma_entries_require_tos(self):
+        gemma_entries = [e for e in MODEL_CATALOG if e.license_spdx == "Gemma"]
+        assert len(gemma_entries) >= 1, "Expected at least one Gemma-licensed entry"
+        for e in gemma_entries:
+            assert e.requires_tos, f"{e.name!r} is Gemma but requires_tos is False"
+            assert "ai.google.dev/gemma/terms" in e.tos_url
+
+    # ── Gemma vision entries ──────────────────────────────────────────────────
+
+    def test_paligemma_in_catalog(self):
+        keys = [e.key for e in MODEL_CATALOG]
+        assert "paligemma-3b-int4" in keys
+
+    def test_gemma3_vision_in_catalog(self):
+        keys = [e.key for e in MODEL_CATALOG]
+        assert "gemma3-4b-vision-int4" in keys
+
+    def test_paligemma_is_vision(self):
+        entry = next(e for e in MODEL_CATALOG if e.key == "paligemma-3b-int4")
+        assert entry.is_vision is True
+
+    def test_gemma3_vision_is_vision(self):
+        entry = next(e for e in MODEL_CATALOG if e.key == "gemma3-4b-vision-int4")
+        assert entry.is_vision is True
+
+    def test_paligemma_npu_fit(self):
+        entry = next(e for e in MODEL_CATALOG if e.key == "paligemma-3b-int4")
+        assert entry.npu_fit in ("excellent", "good")
+
+    def test_gemma_vision_in_vision_models_list(self):
+        vision_keys = [e.key for e in get_vision_models()]
+        assert "paligemma-3b-int4" in vision_keys
+        assert "gemma3-4b-vision-int4" in vision_keys
+
+    # ── requires_tos field defaults ───────────────────────────────────────────
+
+    def test_requires_tos_defaults_false(self):
+        e = _make_entry()
+        assert e.requires_tos is False
+
+    def test_tos_url_defaults_empty(self):
+        e = _make_entry()
+        assert e.tos_url == ""
+
+    def test_tos_summary_defaults_empty(self):
+        e = _make_entry()
+        assert e.tos_summary == ""
+
     def test_all_npu_fit_valid(self):
         valid = {"excellent", "good", "fair", "not_recommended"}
         for e in MODEL_CATALOG:
@@ -510,9 +579,11 @@ class TestInstallModelFromCatalog:
         assert result.name == entry.onnx_filename
 
     def test_raises_when_no_external(self, tmp_path):
-        entry = _make_entry()
-        with pytest.raises(InstallError, match="external network access"):
-            install_model_from_catalog(entry, allow_external=False)
+        entry = _make_entry(min_size_bytes=100)
+        # Force is_installed() to return False so allow_external is checked
+        with patch.object(NPUModelInstaller, "is_installed", return_value=False):
+            with pytest.raises(InstallError, match="external network access"):
+                install_model_from_catalog(entry, allow_external=False)
 
 
 # ── ensure_default_model ──────────────────────────────────────────────────────
@@ -593,3 +664,70 @@ class TestConstants:
     def test_models_root_under_home(self):
         assert MODELS_ROOT.is_absolute()
         assert ".local" in str(MODELS_ROOT) or "share" in str(MODELS_ROOT)
+
+
+# ── ModelCatalogEntry TOS fields ──────────────────────────────────────────────
+
+class TestRequiresTos:
+    def test_entry_with_tos(self):
+        e = _make_entry(
+            requires_tos=True,
+            tos_url="https://example.com/tos",
+            tos_summary="You must agree to our terms.",
+        )
+        assert e.requires_tos is True
+        assert "example.com" in e.tos_url
+        assert "agree" in e.tos_summary
+
+    def test_entry_without_tos(self):
+        e = _make_entry(requires_tos=False)
+        assert e.requires_tos is False
+
+    def test_tos_url_in_hf_base_url_independent(self):
+        e = _make_entry(
+            requires_tos=True,
+            tos_url="https://ai.google.dev/gemma/terms",
+        )
+        # tos_url is separate from hf_base_url
+        assert "ai.google.dev" in e.tos_url
+        assert "ai.google.dev" not in e.hf_base_url
+
+    def test_paligemma_tos_fields(self):
+        pali = next(e for e in MODEL_CATALOG if e.key == "paligemma-3b-int4")
+        assert pali.requires_tos is True
+        assert pali.tos_url.startswith("https://")
+        assert len(pali.tos_summary) > 50
+
+    def test_gemma3_tos_fields(self):
+        g3 = next(e for e in MODEL_CATALOG if e.key == "gemma3-4b-vision-int4")
+        assert g3.requires_tos is True
+        assert "gemma" in g3.tos_url.lower()
+        assert len(g3.tos_summary) > 50
+
+    def test_phi3_vision_no_tos(self):
+        phi = next(e for e in MODEL_CATALOG if e.key == "phi3-vision-128k-int4")
+        assert phi.requires_tos is False
+
+    def test_florence_no_tos(self):
+        fl = next(e for e in MODEL_CATALOG if e.key == "florence2-base")
+        assert fl.requires_tos is False
+
+
+# ── No preinstall — model_path default ────────────────────────────────────────
+
+class TestNoPreinstall:
+    def test_default_model_path_is_empty(self):
+        """Config default must be '' (no auto-install) not 'auto'."""
+        from src.config import _DEFAULTS
+        npu_cfg = _DEFAULTS.get("npu", {})
+        assert npu_cfg.get("model_path") == "", (
+            "npu.model_path default should be '' (no preinstall); "
+            f"got {npu_cfg.get('model_path')!r}"
+        )
+
+    def test_auto_install_disabled_by_default(self):
+        from src.config import _DEFAULTS
+        npu_cfg = _DEFAULTS.get("npu", {})
+        assert npu_cfg.get("auto_install_default_model") is False, (
+            "auto_install_default_model should default to False"
+        )

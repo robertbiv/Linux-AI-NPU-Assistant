@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Search in files tool — find text patterns inside files."""
 
 from __future__ import annotations

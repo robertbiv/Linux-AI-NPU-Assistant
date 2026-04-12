@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """NPU model installer — default vision model + curated NPU-optimised catalog.
 
 Default bundled model
@@ -104,6 +105,15 @@ class ModelCatalogEntry:
         Optional extra notes shown in the GUI (e.g. hardware requirements).
     is_default:
         ``True`` for the single model that is installed by default.
+    requires_tos:
+        ``True`` when the publisher requires accepting a Terms of Service
+        agreement before downloading.  The GUI shows a confirmation dialog
+        before starting the download.
+    tos_url:
+        URL to the full Terms of Service document.
+    tos_summary:
+        Short plain-text summary of the key TOS restrictions shown in the
+        GUI dialog so the user doesn't have to leave the application.
     """
 
     key:            str
@@ -122,6 +132,17 @@ class ModelCatalogEntry:
     license_url:    str   = ""
     notes:          str   = ""
     is_default:     bool  = False
+    # ── Terms-of-service ──────────────────────────────────────────────────────
+    requires_tos:   bool  = False
+    """``True`` when the publisher requires accepting a Terms of Service before
+    downloading.  The GUI will show a TOS dialog and the user must tick an
+    acceptance checkbox before the download starts."""
+    tos_url:        str   = ""
+    """URL to the full Terms of Service text (opened in a browser when the
+    user clicks the 'Read full terms' button in the TOS dialog)."""
+    tos_summary:    str   = ""
+    """One-paragraph plain-text summary of the key TOS restrictions shown
+    inside the TOS dialog so the user does not have to leave the app."""
 
     @property
     def hf_base_url(self) -> str:
@@ -352,6 +373,93 @@ MODEL_CATALOG: list[ModelCatalogEntry] = [
         license_url     = "https://ai.google.dev/gemma/terms",
         notes           = "Requires accepting Google's Gemma Terms of Use "
                           "on Hugging Face before downloading.",
+        requires_tos    = True,
+        tos_url         = "https://ai.google.dev/gemma/terms",
+        tos_summary     = (
+            "Gemma models are subject to Google's Gemma Terms of Use. "
+            "You may use this model for research and commercial applications "
+            "under those terms. You must not use the model to violate "
+            "applicable laws, generate harmful content, or misrepresent its "
+            "AI-generated nature. Redistribution requires preserving this notice."
+        ),
+    ),
+
+    # ── Gemma Vision models (Google) ──────────────────────────────────────────
+
+    ModelCatalogEntry(
+        key            = "paligemma-3b-int4",
+        name           = "PaliGemma 3B (INT4, vision)",
+        publisher      = "Google",
+        description    = "3 B vision-language model from Google. Understands "
+                         "images and text together. Excellent for screenshot "
+                         "Q&A, OCR, and image captioning on NPU.",
+        hf_repo        = "onnx-community/paligemma-3b-pt-224-onnx",
+        hf_variant     = "int4",
+        onnx_filename  = "model.onnx",
+        extra_files    = [
+            ("model.onnx.data",             None),
+            ("tokenizer.json",              None),
+            ("tokenizer_config.json",       None),
+            ("special_tokens_map.json",     None),
+            ("processor_config.json",       None),
+            ("preprocessor_config.json",    None),
+        ],
+        min_size_bytes  = 100 * 1024 * 1024,
+        is_vision       = True,
+        npu_fit         = "excellent",
+        size_description = "~1.7 GB",
+        license_spdx    = "Gemma",
+        license_url     = "https://ai.google.dev/gemma/terms",
+        notes           = "Requires accepting Google's Gemma Terms of Use. "
+                          "Optimised for 224×224 image understanding tasks.",
+        requires_tos    = True,
+        tos_url         = "https://ai.google.dev/gemma/terms",
+        tos_summary     = (
+            "PaliGemma is a Gemma model subject to Google's Gemma Terms of Use. "
+            "You may use it for research and qualifying commercial applications. "
+            "You must not use it to generate harmful, deceptive, or illegal "
+            "content, or violate any applicable laws. You must include the Gemma "
+            "prohibited-use notice in any redistribution of the model or "
+            "applications built on it."
+        ),
+    ),
+
+    ModelCatalogEntry(
+        key            = "gemma3-4b-vision-int4",
+        name           = "Gemma 3 4B-IT (INT4, vision)",
+        publisher      = "Google",
+        description    = "4 B multimodal model from Google with strong vision "
+                         "and language capabilities. Handles screenshots, "
+                         "diagrams, and code understanding on NPU.",
+        hf_repo        = "onnx-community/gemma-3-4b-it-ONNX",
+        hf_variant     = "onnx/int4",
+        onnx_filename  = "model.onnx",
+        extra_files    = [
+            ("model.onnx.data",             None),
+            ("tokenizer.json",              None),
+            ("tokenizer_config.json",       None),
+            ("special_tokens_map.json",     None),
+            ("processor_config.json",       None),
+            ("preprocessor_config.json",    None),
+        ],
+        min_size_bytes  = 200 * 1024 * 1024,
+        is_vision       = True,
+        npu_fit         = "good",
+        size_description = "~2.5 GB",
+        license_spdx    = "Gemma",
+        license_url     = "https://ai.google.dev/gemma/terms",
+        notes           = "Requires accepting Google's Gemma Terms of Use. "
+                          "Best Gemma vision model for general assistant tasks.",
+        requires_tos    = True,
+        tos_url         = "https://ai.google.dev/gemma/terms",
+        tos_summary     = (
+            "Gemma 3 is subject to Google's Gemma Terms of Use. "
+            "You may use it for research and qualifying commercial applications. "
+            "You must not use it to generate harmful, deceptive, or illegal "
+            "content, or violate any applicable laws. You must include the Gemma "
+            "prohibited-use notice in any redistribution of the model or "
+            "applications built on it."
+        ),
     ),
 ]
 

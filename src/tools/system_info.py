@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """System information tool — answer questions about the user's system.
 
 Queries answered

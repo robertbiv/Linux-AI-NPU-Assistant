@@ -258,7 +258,8 @@ class TestNPUManager:
             MockSess.return_value = mock_s
             outputs = mgr.run_inference(feeds)
         assert outputs == ["output"]
-        mock_s.run.assert_called_once_with(["input_ids"], feeds)
+        # run_inference calls NPUSession.run(feeds) — the NPUSession mock is mock_s
+        mock_s.run.assert_called_once_with(feeds)
 
     def test_run_inference_unloads_by_default(self, tmp_path):
         onnx = tmp_path / "m.onnx"
@@ -316,7 +317,8 @@ class TestNPUManagerAutoResolve:
 
         mgr = NPUManager({"model_path": "auto", "auto_install_default_model": True})
 
-        with patch("src.npu_manager.NPUModelInstaller") as MockInst:
+        # Patch at the source — NPUModelInstaller is imported inside _resolve_auto_model
+        with patch("src.npu_model_installer.NPUModelInstaller") as MockInst:
             mock_i = MagicMock()
             mock_i.is_installed.return_value = True
             mock_i.model_path.return_value = onnx
@@ -328,9 +330,10 @@ class TestNPUManagerAutoResolve:
 
     def test_auto_resolve_install_failure_returns_empty(self):
         from src.npu_model_installer import InstallError
+
         mgr = NPUManager({"model_path": "auto", "auto_install_default_model": True})
 
-        with patch("src.npu_manager.NPUModelInstaller") as MockInst:
+        with patch("src.npu_model_installer.NPUModelInstaller") as MockInst:
             mock_i = MagicMock()
             mock_i.is_installed.return_value = False
             mock_i.install.side_effect = InstallError("fail")

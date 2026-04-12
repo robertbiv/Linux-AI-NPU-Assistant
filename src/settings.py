@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Settings manager — single source of truth for all application settings.
 
 The :class:`SettingsManager` owns the authoritative in-memory settings dict

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """GUI package for Linux AI NPU Helper.
 
 This package provides PyQt5-based GUI components.  All modules use

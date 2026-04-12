@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Installed applications detector.
 
 Scans .desktop files, Flatpak, Snap, system packages, and PATH binaries.

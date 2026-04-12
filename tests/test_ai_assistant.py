@@ -413,11 +413,10 @@ class TestAskNPU:
                 list(assistant.ask("hello"))
 
     def test_npu_inference_called(self):
-        import numpy as np
+        numpy = pytest.importorskip("numpy")
         cfg = _make_config(backend="npu")
         npu = MagicMock()
-        result_bytes = b"hello from npu"
-        result_array = np.frombuffer(result_bytes, dtype=np.uint8)
+        result_array = numpy.array([72, 101, 108, 108, 111], dtype=numpy.uint8)  # "Hello"
         npu.run_inference.return_value = [result_array]
         assistant = AIAssistant(cfg, npu_manager=npu)
         tokens = list(assistant.ask("test prompt"))
@@ -425,6 +424,7 @@ class TestAskNPU:
         assert "".join(tokens)  # Non-empty output
 
     def test_npu_empty_output_yields_empty_string(self):
+        pytest.importorskip("numpy")
         cfg = _make_config(backend="npu")
         npu = MagicMock()
         npu.run_inference.return_value = []

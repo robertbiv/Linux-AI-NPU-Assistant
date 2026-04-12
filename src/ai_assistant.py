@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """AI assistant backend — vision-capable LLM interaction.
 
 Supported backends

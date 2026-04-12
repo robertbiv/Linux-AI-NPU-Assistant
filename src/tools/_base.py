@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Base types and registry for the tools package."""
 
 from __future__ import annotations

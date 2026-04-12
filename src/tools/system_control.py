@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """System control tool — control audio, bluetooth, wifi, brightness, etc."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Conversation history — in-memory storage with optional disk persistence.
 
 Messages are kept in a plain Python list so they are always available for

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Diagnostic reporter — pure-Python system status collector.
 
 Collects the status of every major application subsystem without importing

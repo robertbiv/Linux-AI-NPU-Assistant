@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Model selector — list, choose, and validate AI models against NPU capabilities.
 
 Supports Ollama and OpenAI-compatible backends.  For each model it evaluates

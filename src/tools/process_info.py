@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Process and power information tool.
 
 Answers: what is slowing my computer, what is draining the battery,

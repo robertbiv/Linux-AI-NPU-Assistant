@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """AMD Ryzen AI / ONNX Runtime NPU manager.
 
 This module probes for AMD NPU availability via ONNX Runtime's VitisAI

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """PyQt5 settings dialog — tabbed GUI that stays in sync with settings.json.
 
 Every widget change is written immediately to :class:`~src.settings.SettingsManager`

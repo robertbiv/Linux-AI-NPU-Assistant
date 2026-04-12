@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Web fetch tool — retrieve text content from a URL."""
 
 from __future__ import annotations

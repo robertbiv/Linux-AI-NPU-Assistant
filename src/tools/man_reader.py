@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Man page reader tool — read Linux manual pages."""
 
 from __future__ import annotations

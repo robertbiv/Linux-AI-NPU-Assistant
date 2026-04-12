@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Public API for the tools package.
 
 Each tool lives in its own module inside this package.  Import from here:

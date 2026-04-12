@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Find files tool — search for files by name or glob pattern."""
 
 from __future__ import annotations

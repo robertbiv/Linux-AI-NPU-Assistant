@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Configuration management for Linux AI NPU Helper."""
 
 from __future__ import annotations
@@ -67,27 +68,19 @@ _DEFAULTS: dict[str, Any] = {
     "npu": {
         # Path to a pre-compiled ONNX model for the AMD Ryzen AI NPU.
         #
-        # DEFAULT BUNDLED MODEL: Phi-3-vision-128k-instruct (INT4, ~4.2 GB)
-        # ---------------------------------------------------------------
-        # When this is "auto" (the default), the application uses the bundled
-        # Phi-3-vision-128k-instruct ONNX model — a VISION-CAPABLE model that
-        # can see screenshots and user-attached images.  On first launch it is
-        # downloaded automatically from:
-        #   https://huggingface.co/microsoft/Phi-3-vision-128k-instruct-onnx
-        # and installed to:
-        #   ~/.local/share/linux-ai-npu-helper/models/phi3-vision-128k-int4/
+        # No model is preinstalled. Use the GUI (Settings → Models → NPU Catalog)
+        # to browse and download any model from the curated catalog.
         #
-        # To use a different model, set this to an absolute ONNX path, e.g.:
+        # After downloading, this is set automatically to the ONNX file path.
+        # You can also point it at any local ONNX file:
         #   model_path: "/path/to/my-model.onnx"
-        # Set to "" to disable the NPU backend entirely.
-        # See MODEL_CATALOG in src/npu_model_installer.py for all options.
-        "model_path": "auto",
+        "model_path": "",
         # Execution provider preference order (VitisAI first, then fallbacks)
         "providers": ["VitisAIExecutionProvider", "CPUExecutionProvider"],
         # Ryzen AI config JSON expected by VitisAI EP
         "vitisai_config": "/opt/xilinx/xrt/share/vitis_ai_library/models/vitisai_ep_json_config.json",
-        # Auto-download the bundled default model on first NPU use
-        "auto_install_default_model": True,
+        # Auto-download a model on first NPU use (disabled by default — use the GUI)
+        "auto_install_default_model": False,
     },
     # ── Screen capture ────────────────────────────────────────────────────────
     "capture": {

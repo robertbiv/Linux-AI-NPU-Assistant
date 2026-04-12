@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Web search tool — open the user's browser with a search query."""
 
 from __future__ import annotations

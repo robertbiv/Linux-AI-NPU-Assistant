@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Desktop-environment detection and Qt theme application.
 
 Detects the running desktop environment from ``XDG_CURRENT_DESKTOP``,
