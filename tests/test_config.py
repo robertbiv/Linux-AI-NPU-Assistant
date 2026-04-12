@@ -85,6 +85,20 @@ class TestLoadFromFile:
         cfg = load(path=p)
         assert cfg.backend == "ollama"
 
+    @patch("src.security.check_path_permissions")
+    def test_file_checks_permissions_by_default(self, mock_check, tmp_path):
+        p = tmp_path / "config.yaml"
+        p.write_text("backend: openai\n")
+        cfg = load(path=p)
+        mock_check.assert_called_once_with(p, label="config file")
+
+    @patch("src.security.check_path_permissions")
+    def test_file_does_not_check_permissions_if_disabled(self, mock_check, tmp_path):
+        p = tmp_path / "config.yaml"
+        p.write_text("security:\n  check_file_permissions: false\n")
+        cfg = load(path=p)
+        mock_check.assert_not_called()
+
 
 class TestConfigProperties:
     def test_repr(self):
