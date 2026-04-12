@@ -121,6 +121,19 @@ _DEFAULTS: dict[str, Any] = {
             "/proc",
             "/sys",
         ],
+        # ── Tool permissions ──────────────────────────────────────────────────
+        # allowed: whitelist of tool names the AI may call.
+        #   - Empty list [] means ALL registered tools are allowed (default).
+        #   - Any non-empty list restricts the AI to exactly those tools.
+        "allowed": [],
+        # disallowed: blacklist of tool names that are completely blocked.
+        #   Entries here take precedence over "allowed".
+        "disallowed": [],
+        # requires_approval: tools whose invocations must be confirmed by the
+        #   user before they execute.  The confirmation prompt shows the tool
+        #   name and the exact arguments the AI supplied.
+        #   web_search is in this list by default because it opens external URLs.
+        "requires_approval": ["web_search"],
         # Web-search browser tool
         "web_search": {
             # Which engine to use by default.  Must be a key in "engines" below.

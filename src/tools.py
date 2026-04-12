@@ -41,7 +41,7 @@ import subprocess
 import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -581,13 +581,142 @@ class WebSearchTool(Tool):
 
 
 
+# ── Tool permissions ──────────────────────────────────────────────────────────
+
+
+class ToolPermissions:
+    """Encapsulates the allow/disallow/approval rules for tool dispatch.
+
+    Resolution order (highest to lowest precedence):
+    1. ``disallowed`` — tool is **always blocked**, no override.
+    2. ``allowed``    — if non-empty, only tools in this set may run.
+    3. ``requires_approval`` — tool may run, but only after the user confirms.
+
+    Parameters
+    ----------
+    allowed:
+        Whitelist of tool names the AI may call.  An empty set means *all*
+        registered tools are allowed (subject to the disallowed list).
+    disallowed:
+        Blacklist of tool names that are completely blocked.  Takes precedence
+        over ``allowed``.
+    requires_approval:
+        Tool names that need explicit user confirmation before executing.
+        The approval callback receives the tool name and the argument dict and
+        must return ``True`` to proceed.
+    approve_callback:
+        Called as ``approve_callback(tool_name, args) -> bool`` when a tool
+        in ``requires_approval`` is invoked.  Defaults to a terminal prompt.
+    """
+
+    def __init__(
+        self,
+        allowed: list[str] | None = None,
+        disallowed: list[str] | None = None,
+        requires_approval: list[str] | None = None,
+        approve_callback: "Callable[[str, dict], bool] | None" = None,
+    ) -> None:
+        self._allowed: frozenset[str] = frozenset(allowed or [])
+        self._disallowed: frozenset[str] = frozenset(disallowed or [])
+        self._requires_approval: frozenset[str] = frozenset(requires_approval or [])
+        self._approve = approve_callback or _terminal_approve
+
+    # ── Inspection helpers ────────────────────────────────────────────────────
+
+    def is_disallowed(self, name: str) -> bool:
+        return name in self._disallowed
+
+    def is_allowed(self, name: str) -> bool:
+        """Return True if *name* passes the whitelist check.
+
+        If no whitelist is configured (empty set) every tool passes.
+        """
+        if self._allowed:
+            return name in self._allowed
+        return True
+
+    def needs_approval(self, name: str) -> bool:
+        return name in self._requires_approval
+
+    # ── Gate ──────────────────────────────────────────────────────────────────
+
+    def check(self, tool_name: str, args: dict) -> "ToolResult | None":
+        """Enforce permissions for *tool_name* with *args*.
+
+        Returns
+        -------
+        ToolResult | None
+            A ``ToolResult`` with an error message if the tool is blocked or
+            the user declines.  ``None`` means the tool **may proceed**.
+        """
+        if self.is_disallowed(tool_name):
+            logger.info("Tool %r is disallowed by configuration.", tool_name)
+            return ToolResult(
+                tool_name=tool_name,
+                error=f"Tool '{tool_name}' is disabled.",
+            )
+
+        if not self.is_allowed(tool_name):
+            logger.info(
+                "Tool %r is not in the allowed list %s.",
+                tool_name,
+                sorted(self._allowed),
+            )
+            return ToolResult(
+                tool_name=tool_name,
+                error=(
+                    f"Tool '{tool_name}' is not permitted. "
+                    f"Allowed tools: {', '.join(sorted(self._allowed)) or 'none'}."
+                ),
+            )
+
+        if self.needs_approval(tool_name):
+            if not self._approve(tool_name, args):
+                logger.info("User declined approval for tool %r.", tool_name)
+                return ToolResult(
+                    tool_name=tool_name,
+                    error=f"Tool '{tool_name}' was not approved by the user.",
+                )
+
+        return None  # all checks passed — proceed
+
+    # ── Visible tools (for system prompt) ────────────────────────────────────
+
+    def visible_names(self, all_names: list[str]) -> list[str]:
+        """Return the subset of *all_names* that are advertised to the AI.
+
+        Disallowed tools and tools outside the whitelist are hidden from the
+        system prompt so the AI doesn't even try to call them.
+        """
+        return [
+            n for n in all_names
+            if not self.is_disallowed(n) and self.is_allowed(n)
+        ]
+
+
+def _terminal_approve(tool_name: str, args: dict) -> bool:
+    """Default approval callback: asks the user on the terminal."""
+    args_preview = json.dumps(args, ensure_ascii=False)
+    try:
+        print(f"\n⚙  The AI wants to use tool '{tool_name}':")
+        print(f"   Arguments: {args_preview}\n")
+        answer = input("Allow? [y/N] ").strip().lower()
+        return answer in ("y", "yes")
+    except (EOFError, KeyboardInterrupt):
+        return False
+
+
+# ── ToolRegistry ──────────────────────────────────────────────────────────────
+
+
 class ToolRegistry:
     """Registry of all available tools.
 
     The registry:
     - Stores tool instances by name.
-    - Generates a system-prompt snippet that tells the AI which tools are
-      available and how to call them.
+    - Enforces allow / disallow / approval rules via :class:`ToolPermissions`.
+    - Generates a system-prompt snippet that only advertises tools the AI is
+      permitted to call.
     - Dispatches ``[TOOL: name {...}]`` call markers to the right tool.
     """
 
@@ -598,8 +727,9 @@ class ToolRegistry:
         re.DOTALL,
     )
 
-    def __init__(self) -> None:
+    def __init__(self, permissions: ToolPermissions | None = None) -> None:
         self._tools: dict[str, Tool] = {}
+        self._permissions = permissions or ToolPermissions()
 
     def register(self, tool: Tool) -> None:
         """Add a tool to the registry."""
@@ -617,10 +747,11 @@ class ToolRegistry:
     def system_prompt_section(self) -> str:
         """Return the block of text to inject into the system prompt.
 
-        Describes every registered tool and the exact call syntax so the AI
-        knows how to invoke them.
+        Only advertises tools the AI is permitted to call (respects the
+        allow/disallow lists so the model doesn't attempt blocked tools).
         """
-        if not self._tools:
+        visible = self._permissions.visible_names(list(self._tools.keys()))
+        if not visible:
             return ""
 
         lines = [
@@ -636,15 +767,22 @@ class ToolRegistry:
             "",
             "Tools:",
         ]
-        for tool in self._tools.values():
-            lines.append(tool.schema_text())
+        for name in visible:
+            lines.append(self._tools[name].schema_text())
         lines.append("")
         return "\n".join(lines)
 
     # ── Dispatch ──────────────────────────────────────────────────────────────
 
-    def dispatch(self, call_text: str) -> ToolResult | None:
+    def dispatch(self, call_text: str) -> "ToolResult | None":
         """Parse and execute a single ``[TOOL: ...]`` call string.
+
+        Enforces all three permission tiers before running the tool:
+
+        1. **Disallowed** — returns an error result immediately.
+        2. **Not in allowed list** — returns an error result immediately.
+        3. **Requires approval** — calls the approval callback; returns an
+           error result if the user declines.
 
         Parameters
         ----------
@@ -663,13 +801,14 @@ class ToolRegistry:
         tool_name = m.group(1).strip()
         args_str = m.group(2).strip()
 
+        # Unknown tool check (before permission check so the error is accurate)
         tool = self._tools.get(tool_name)
         if tool is None:
             logger.warning("AI called unknown tool %r", tool_name)
             return ToolResult(
                 tool_name=tool_name,
                 error=f"Unknown tool: {tool_name!r}. "
-                      f"Available: {', '.join(self._tools)}",
+                      f"Available: {', '.join(self._permissions.visible_names(list(self._tools)))}",
             )
 
         try:
@@ -679,6 +818,11 @@ class ToolRegistry:
                 tool_name=tool_name,
                 error=f"Invalid tool arguments (not valid JSON): {exc}",
             )
+
+        # Permission gate — returns a ToolResult on failure, None on success
+        blocked = self._permissions.check(tool_name, args)
+        if blocked is not None:
+            return blocked
 
         logger.info("Running tool %r with args %s", tool_name, args)
         return tool.run(args)
