@@ -525,7 +525,7 @@ class ToolRegistry:
         # 4. Validate and sanitise AI-supplied arguments before dispatch
         try:
             from src.security import validate_tool_args
-            args = validate_tool_args(args, schema=desc.schema)
+            args = validate_tool_args(args, schema=desc.parameters_schema)
         except (ValueError, TypeError) as exc:
             return ToolResult(
                 tool_name=tool_name,
