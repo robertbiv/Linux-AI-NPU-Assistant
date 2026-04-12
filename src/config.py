@@ -132,8 +132,9 @@ _DEFAULTS: dict[str, Any] = {
         # requires_approval: tools whose invocations must be confirmed by the
         #   user before they execute.  The confirmation prompt shows the tool
         #   name and the exact arguments the AI supplied.
-        #   web_search is in this list by default because it opens external URLs.
-        "requires_approval": ["web_search"],
+        #   web_search and web_fetch are here by default because they interact
+        #   with external resources.
+        "requires_approval": ["web_search", "web_fetch"],
         # Man page reader tool
         "man_reader": {
             # Set to false to remove read_man_page from the tool registry
@@ -146,7 +147,34 @@ _DEFAULTS: dict[str, Any] = {
             # specific ones.  Use [] to return the full page.
             "default_sections": ["SYNOPSIS", "OPTIONS", "EXAMPLES"],
         },
-        # Web-search browser tool
+        # ── Web fetch tool ────────────────────────────────────────────────────
+        # DISABLED BY DEFAULT — requires explicit opt-in.
+        # When enabled the AI can retrieve text content from public URLs.
+        # Every fetch still requires user approval (see requires_approval).
+        "web_fetch": {
+            "enabled": False,
+            # Max characters of response text returned to the AI per request.
+            "max_response_chars": 8000,
+            # Only these Content-Types are accepted (others are rejected).
+            "allowed_content_types": [
+                "text/html",
+                "text/plain",
+                "text/markdown",
+                "application/json",
+                "application/xml",
+                "text/xml",
+            ],
+            # Optional domain allowlist — if non-empty, ONLY these domains
+            # (and their sub-domains) can be fetched. Empty = any domain.
+            "domain_allowlist": [],
+            # Domains that are always blocked regardless of allowlist.
+            "domain_blocklist": [],
+            # Maximum number of HTTP redirects to follow.
+            "max_redirects": 5,
+            # Timeouts in seconds: [connect, read]
+            "connect_timeout": 5,
+            "read_timeout": 15,
+        },
         "web_search": {
             # Which engine to use by default.  Must be a key in "engines" below.
             "engine": "duckduckgo",

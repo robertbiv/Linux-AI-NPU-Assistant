@@ -7,7 +7,6 @@ from unittest.mock import patch
 from src.os_detector import (
     OSInfo,
     _detect_package_manager,
-    _extract_sections,
     _read_os_release,
     detect,
 )
@@ -151,9 +150,8 @@ class TestDetect:
 
     def test_read_os_release_returns_dict(self):
         result = _read_os_release()
-        # On any modern Linux this should have at least ID and NAME
         assert isinstance(result, dict)
-        assert "ID" in result or "NAME" in result or len(result) > 0
+        assert len(result) > 0
 
     def test_detect_with_mocked_os_release(self):
         detect.cache_clear()
