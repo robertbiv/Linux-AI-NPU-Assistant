@@ -157,14 +157,20 @@ jobs:
           PYEOF
 
       - name: Build MkDocs site
-        run: mkdocs build --strict --site-dir docs/_site
+        run: mkdocs build --strict --site-dir site
         env:
           PYTHONPATH: .
+
+      - name: Copy coverage badge and report to site
+        run: |
+          mkdir -p site/coverage
+          cp -r docs/_site/coverage/* site/coverage/ || true
+          cp docs/_site/coverage-badge.json site/ || true
 
       - name: Upload Pages artefact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/_site
+          path: site
 
   # ── 3. Deploy to GitHub Pages ───────────────────────────────────────────────
   deploy:
