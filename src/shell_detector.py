@@ -108,7 +108,7 @@ def _from_path(path: str) -> ShellInfo:
     )
 
 
-def _from_passwd() -> str | None:
+def _from_user_db() -> str | None:
     """Return the login shell from /etc/passwd for the current user."""
     try:
         entry = pwd.getpwuid(os.getuid())
@@ -151,7 +151,7 @@ def detect() -> ShellInfo:
         return _from_path(parent)
 
     # 3. System user database
-    etc_shell = _from_passwd()
+    etc_shell = _from_user_db()
     if etc_shell and Path(etc_shell).exists():
         logger.debug("shell_detector: using system login shell: %s", etc_shell)
         return _from_path(etc_shell)
