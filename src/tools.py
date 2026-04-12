@@ -48,10 +48,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
-import shutil
-import subprocess
 import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -200,6 +197,7 @@ class FindFilesTool(Tool):
     def _detect_backend(self) -> str:
         """Return 'plocate', 'locate', or 'find'."""
         if self._backend is None:
+            import shutil  # lazy — only needed when first search runs
             for cmd in ("plocate", "locate"):
                 if shutil.which(cmd):
                     self._backend = cmd
@@ -246,6 +244,7 @@ class FindFilesTool(Tool):
         cmd: str, pattern: str, search_path: Path, limit: int
     ) -> list[str]:
         """Run plocate/locate and return matching paths under search_path."""
+        import subprocess  # lazy — only when tool actually runs
         args = [cmd, "--basename", "-l", str(limit * 2), pattern]
         proc = subprocess.run(
             args,
@@ -254,7 +253,6 @@ class FindFilesTool(Tool):
             timeout=10,
         )
         lines = [l.strip() for l in proc.stdout.splitlines() if l.strip()]
-        # Filter to paths that start with the requested search_path
         prefix = str(search_path)
         return [l for l in lines if l.startswith(prefix)]
 
@@ -263,15 +261,14 @@ class FindFilesTool(Tool):
         pattern: str, search_path: Path, limit: int, include_hidden: bool
     ) -> list[str]:
         """Run find(1) to search by name."""
+        import subprocess  # lazy — only when tool actually runs
         cmd = ["find", str(search_path), "-name", pattern]
         if not include_hidden:
-            # Skip directories starting with '.'
             cmd = (
                 ["find", str(search_path)]
                 + ["-not", "-path", "*/.*"]
                 + ["-name", pattern]
             )
-        # Limit via head to avoid blocking for too long on huge trees
         try:
             proc = subprocess.run(
                 cmd,
