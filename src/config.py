@@ -210,6 +210,16 @@ _DEFAULTS: dict[str, Any] = {
     # ── Logging ───────────────────────────────────────────────────────────────
     "log_level": "INFO",
     "log_file": "",   # empty = stderr only
+    # ── Security hardening ────────────────────────────────────────────────────
+    "security": {
+        # Maximum AI backend calls per minute (0 = no limit).
+        # Prevents runaway spending / resource exhaustion if the UI sends
+        # requests in a tight loop.
+        "rate_limit_per_minute": 0,
+        # When True, warn on startup if any config or history file has
+        # group- or world-readable permissions.
+        "check_file_permissions": True,
+    },
 }
 
 
@@ -288,7 +298,8 @@ class Config:
         return self._data["safety"]
 
     @property
-    def log_level(self) -> str:
+    def security(self) -> dict:
+        return self._data.get("security", {})
         return self._data.get("log_level", "INFO")
 
     @property
@@ -336,4 +347,12 @@ def load(path: str | Path | None = None) -> Config:
     else:
         data["openai"].setdefault("api_key", "")
 
-    return Config(data)
+    cfg = Config(data)
+
+    # Check config file permissions after building the Config so we can read
+    # the security.check_file_permissions setting from merged data.
+    if cfg.security.get("check_file_permissions", True) and config_file is not None:
+        from src.security import check_path_permissions
+        check_path_permissions(config_file, label="config file")
+
+    return cfg

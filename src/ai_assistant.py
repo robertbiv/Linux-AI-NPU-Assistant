@@ -31,49 +31,26 @@ Backend resource efficiency
 
 from __future__ import annotations
 
-import ipaddress
 import json
 import logging
 from typing import TYPE_CHECKING, Generator, Iterator
-from urllib.parse import urlparse
+
+from src.security import (
+    ExternalNetworkBlockedError,  # re-export for callers that import from here
+    RateLimiter,
+    assert_local_url,
+    mask_secret,
+    sanitize_ai_response,
+)
 
 if TYPE_CHECKING:
     from src.conversation import ConversationHistory
 
 logger = logging.getLogger(__name__)
 
-
-# ── Network guard ─────────────────────────────────────────────────────────────
-
-class ExternalNetworkBlockedError(RuntimeError):
-    """Raised when a request to an external host is attempted while
-    ``network.allow_external`` is ``False``."""
-
-
-def _is_local_url(url: str) -> bool:
-    """Return True if *url* resolves to a loopback or RFC-1918 private address."""
-    host = urlparse(url).hostname or ""
-    if host in ("localhost", "::1"):
-        return True
-    try:
-        addr = ipaddress.ip_address(host)
-        return addr.is_loopback or addr.is_private
-    except ValueError:
-        # Not a bare IP — treat as external (could be a hostname)
-        return False
-
-
-def _assert_local(url: str, allow_external: bool) -> None:
-    """Raise :class:`ExternalNetworkBlockedError` if *url* is external and
-    external traffic is not allowed."""
-    if allow_external:
-        return
-    if not _is_local_url(url):
-        raise ExternalNetworkBlockedError(
-            f"Blocked attempt to contact external host: {url!r}\n"
-            "All AI processing must stay local (network.allow_external is false).\n"
-            "Point your backend URL at localhost or a private-network address."
-        )
+# Re-export so existing code that imports ExternalNetworkBlockedError from
+# this module continues to work.
+__all__ = ["AIAssistant", "ExternalNetworkBlockedError"]
 
 
 class AIAssistant:
@@ -93,6 +70,10 @@ class AIAssistant:
         self._npu_manager = npu_manager
         self._registry = registry    # ToolRegistry | None
         self._os_info = os_info      # OSInfo | None
+        # Rate limiter — reads from config.security.rate_limit_per_minute (0 = disabled)
+        security_cfg: dict = config.get("security", {}) if hasattr(config, "get") else {}
+        rpm = int(security_cfg.get("rate_limit_per_minute", 0))
+        self._rate_limiter = RateLimiter(calls_per_minute=rpm)
 
     def _build_system_prompt(self) -> str:
         """Build a fresh system prompt combining base instructions, OS info,
@@ -152,6 +133,9 @@ class AIAssistant:
         str
             Incremental response tokens as they arrive.
         """
+        # Rate-limit check: raises RateLimitExceededError if over the limit.
+        self._rate_limiter.check()
+
         backend = self._config.backend
         if backend == "ollama":
             yield from self._ask_ollama(
@@ -229,7 +213,7 @@ class AIAssistant:
         logger.debug("Sending request to Ollama at %s (model=%s)", url, model)
 
         # Privacy guard: block external hosts unless explicitly permitted
-        _assert_local(url, self._config.network.get("allow_external", False))
+        assert_local_url(url, self._config.network.get("allow_external", False))
 
         # Backend resource efficiency: close the TCP socket after this request
         headers = {"Connection": "close"}
@@ -241,6 +225,7 @@ class AIAssistant:
                 stream=stream,
                 timeout=timeout,
                 headers=headers,
+                verify=True,   # Always verify TLS certificates
             ) as resp:
                 resp.raise_for_status()
                 if stream:
@@ -253,12 +238,14 @@ class AIAssistant:
                             continue
                         token = chunk.get("message", {}).get("content", "")
                         if token:
-                            yield token
+                            yield sanitize_ai_response(token)
                         if chunk.get("done"):
                             break
                 else:
                     data = resp.json()
-                    yield data.get("message", {}).get("content", "")
+                    yield sanitize_ai_response(
+                        data.get("message", {}).get("content", "")
+                    )
         except Exception as exc:
             logger.error("Ollama request failed: %s", exc)
             raise
@@ -328,8 +315,13 @@ class AIAssistant:
 
         url = f"{base_url}/chat/completions"
         # Privacy guard: block external hosts unless explicitly permitted
-        _assert_local(url, self._config.network.get("allow_external", False))
-        # Backend resource efficiency: close socket after response
+        assert_local_url(url, self._config.network.get("allow_external", False))
+        # Backend resource efficiency: close socket after response.
+        # Never log the raw API key — log the masked version only.
+        if api_key:
+            logger.debug(
+                "Authenticating with API key %s", mask_secret(api_key)
+            )
         headers: dict[str, str] = {
             "Authorization": f"Bearer {api_key}",
             "Connection": "close",
@@ -344,6 +336,7 @@ class AIAssistant:
                 headers=headers,
                 stream=stream,
                 timeout=timeout,
+                verify=True,   # Always verify TLS certificates
             ) as resp:
                 resp.raise_for_status()
                 if stream:
@@ -363,10 +356,10 @@ class AIAssistant:
                             .get("content", "")
                         )
                         if delta:
-                            yield delta
+                            yield sanitize_ai_response(delta)
                 else:
                     data = resp.json()
-                    yield (
+                    yield sanitize_ai_response(
                         data.get("choices", [{}])[0]
                         .get("message", {})
                         .get("content", "")
@@ -419,7 +412,9 @@ class AIAssistant:
         if outputs:
             result = outputs[0]
             if hasattr(result, "tobytes"):
-                yield result.tobytes().decode("utf-8", errors="replace")
+                yield sanitize_ai_response(
+                    result.tobytes().decode("utf-8", errors="replace")
+                )
             else:
                 yield str(result)
         else:

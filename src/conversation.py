@@ -25,6 +25,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
+from src.security import check_path_permissions, secure_write
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MAX_MESSAGES = 200
@@ -196,19 +198,23 @@ class ConversationHistory:
         if self._path is None:
             return
         try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
             with self._lock:
                 data = [m.to_dict() for m in self._messages]
-            # Write atomically via a temporary file
-            tmp = self._path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-            tmp.replace(self._path)
+            # Atomic write with owner-only permissions (0o600) so conversation
+            # history is never readable by other local users.
+            secure_write(
+                self._path,
+                json.dumps(data, indent=2, ensure_ascii=False),
+                mode=0o600,
+            )
         except OSError as exc:
             logger.warning("Could not persist conversation history: %s", exc)
 
     def _load(self) -> None:
         if self._path is None or not self._path.exists():
             return
+        # Warn if the history file is readable by group or world.
+        check_path_permissions(self._path, label="conversation history file")
         try:
             raw = json.loads(self._path.read_text(encoding="utf-8"))
             with self._lock:

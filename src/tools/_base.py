@@ -522,12 +522,22 @@ class ToolRegistry:
         if blocked is not None:
             return blocked
 
-        # 4. Lazy-load and run
+        # 4. Validate and sanitise AI-supplied arguments before dispatch
+        try:
+            from src.security import validate_tool_args
+            args = validate_tool_args(args, schema=desc.schema)
+        except (ValueError, TypeError) as exc:
+            return ToolResult(
+                tool_name=tool_name,
+                error=f"Tool argument validation failed: {exc}",
+            )
+
+        # 5. Lazy-load and run
         tool = desc.get_instance()
         logger.info("Dispatching tool '%s' args=%s", tool_name, args)
         result = tool.run(args)
 
-        # 5. Optional unload after use
+        # 6. Optional unload after use
         if desc.unload_after_use:
             desc.release()
 
