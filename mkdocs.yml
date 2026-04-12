@@ -1,0 +1,127 @@
+site_name: Linux AI NPU Helper
+site_url: https://robertbiv.github.io/Linux-AI-NPU-Helper/
+site_description: >-
+  A privacy-first AI assistant for Linux that runs locally on the AMD Ryzen AI NPU.
+  Zero cloud, zero telemetry — all inference stays on your machine.
+site_author: robertbiv
+repo_url: https://github.com/robertbiv/Linux-AI-NPU-Helper
+repo_name: robertbiv/Linux-AI-NPU-Helper
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2025 robertbiv
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/chip
+  favicon: assets/favicon.ico
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            inherited_members: false
+            filters:
+              - "!^_"   # hide private members by default
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - User Guides:
+    - guides/building-flatpak.md
+    - guides/model-guide.md
+    - guides/settings-guide.md
+  - API Reference:
+    - api/config.md
+    - api/ai_assistant.md
+    - api/security.md
+    - api/settings.md
+    - api/model_selector.md
+    - api/conversation.md
+    - api/os_detector.md
+    - api/shell_detector.md
+    - api/tools.md
+    - api/npu_manager.md
+    - api/gui.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/robertbiv/Linux-AI-NPU-Helper
+  version:
+    provider: mike
+
+extra_css:
+  - stylesheets/extra.css

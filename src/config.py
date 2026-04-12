@@ -300,6 +300,9 @@ class Config:
     @property
     def security(self) -> dict:
         return self._data.get("security", {})
+
+    @property
+    def log_level(self) -> str:
         return self._data.get("log_level", "INFO")
 
     @property
