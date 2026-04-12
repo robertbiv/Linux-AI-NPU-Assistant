@@ -3,6 +3,14 @@
 Supports two backends:
 - ``mss``   – fast, pure-Python, no external tools required (default)
 - ``scrot`` – uses the external ``scrot`` command-line tool
+
+Resource efficiency
+-------------------
+All heavy imports (``mss``, ``PIL``) are deferred to the moment of capture so
+the module has zero import cost when idle.  Image bytes are returned as plain
+``bytes`` objects; callers should delete or overwrite the reference as soon as
+the bytes have been forwarded to the AI backend so memory is reclaimed by GC
+without waiting for the next cycle.
 """
 
 from __future__ import annotations

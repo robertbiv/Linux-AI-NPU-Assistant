@@ -20,6 +20,21 @@ _DEFAULTS: dict[str, Any] = {
     # Use 'copilot' to listen for the physical Copilot/Fn key via evdev.
     # Alternatively supply a pynput-style key combo, e.g. "<ctrl>+<alt>+space".
     "hotkey": "copilot",
+    # ── Resource / power management ───────────────────────────────────────────
+    "resources": {
+        # Unload the NPU/ONNX session from memory after each inference call.
+        # Keeps RAM free at the cost of a small reload delay on the next call.
+        "unload_model_after_inference": True,
+        # Close the HTTP connection to the AI backend after every request.
+        # Prevents idle TCP sockets from lingering between interactions.
+        "close_http_after_request": True,
+        # Delete the screenshot bytes from memory as soon as they have been
+        # forwarded to the AI backend.
+        "discard_screenshot_after_send": True,
+        # Stream AI tokens to the UI as they arrive rather than waiting for the
+        # full response (reduces perceived latency and peak memory use).
+        "stream_response": True,
+    },
     # ── AI backend ────────────────────────────────────────────────────────────
     # Supported backends: "ollama", "openai", "npu"
     "backend": "ollama",
@@ -114,6 +129,10 @@ class Config:
         return key in self._data
 
     # ── Convenience properties ────────────────────────────────────────────────
+
+    @property
+    def resources(self) -> dict:
+        return self._data.get("resources", {})
 
     @property
     def backend(self) -> str:

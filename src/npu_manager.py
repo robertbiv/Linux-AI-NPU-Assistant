@@ -18,6 +18,13 @@ logger = logging.getLogger(__name__)
 class NPUSession:
     """Wraps an onnxruntime.InferenceSession configured for AMD NPU.
 
+    Supports the context-manager protocol so resources are released as soon
+    as the ``with`` block exits::
+
+        with NPUSession(model_path, providers) as session:
+            outputs = session.run(feeds)
+        # session memory freed here
+
     Parameters
     ----------
     model_path:
@@ -94,6 +101,19 @@ class NPUSession:
             self._output_names,
         )
 
+    # ── Context manager ───────────────────────────────────────────────────────
+
+    def __enter__(self) -> "NPUSession":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        """Explicitly release the ONNX session to free GPU/NPU memory."""
+        self._session = None
+        logger.debug("NPUSession closed; ONNX runtime memory released.")
+
     def run(self, feeds: dict[str, Any]) -> list[Any]:
         """Run inference.
 
@@ -106,8 +126,19 @@ class NPUSession:
         -------
         list
             Raw ONNX Runtime output tensors.
+
+        Note
+        ----
+        The session may be ``None`` after :py:meth:`close` is called.  Always
+        use this object inside a ``with`` block or check :py:attr:`is_open`.
         """
+        if self._session is None:
+            raise RuntimeError("NPUSession has been closed.")
         return self._session.run(self._output_names, feeds)
+
+    @property
+    def is_open(self) -> bool:
+        return self._session is not None
 
     @property
     def input_names(self) -> list[str]:
@@ -121,8 +152,9 @@ class NPUSession:
 class NPUManager:
     """High-level manager for AMD NPU availability and session lifecycle."""
 
-    def __init__(self, npu_config: dict) -> None:
+    def __init__(self, npu_config: dict, resource_config: dict | None = None) -> None:
         self._config = npu_config
+        self._resource_config = resource_config or {}
         self._session: NPUSession | None = None
         self._available: bool | None = None
 
@@ -199,6 +231,22 @@ class NPUManager:
                 vitisai_config=self._config.get("vitisai_config"),
             )
         return self._session
+
+    def run_inference(self, feeds: dict[str, Any]) -> list[Any]:
+        """Load the model, run inference, and immediately unload if configured.
+
+        When ``resources.unload_model_after_inference`` is ``True`` (default)
+        the ONNX session is destroyed after the call so NPU/GPU memory is
+        released straight away.
+        """
+        session = self.load_model()
+        if session is None:
+            raise RuntimeError("No NPU model_path configured; cannot run inference.")
+        try:
+            return session.run(feeds)
+        finally:
+            if self._resource_config.get("unload_model_after_inference", True):
+                self.unload()
 
     def get_session(self) -> NPUSession | None:
         """Return the cached session, loading it if necessary."""
