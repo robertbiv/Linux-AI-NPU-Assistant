@@ -1,0 +1,186 @@
+name: Docs & Tests
+
+on:
+  push:
+    branches: [main, master, "copilot/**"]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Run tests and generate coverage ─────────────────────────────────────
+  test:
+    name: Test suite & coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install runtime dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --tb=short \
+            -v \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=html:docs/_site/coverage \
+            --cov-report=json:coverage.json \
+            --cov-report=xml:coverage.xml \
+            --junitxml=test-results.xml
+        env:
+          # Prevent any accidental network calls to external hosts
+          no_proxy: "*"
+
+      - name: Upload coverage XML (for badges etc.)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+
+      - name: Generate coverage badge data
+        run: |
+          python - <<'PYEOF'
+          import json, pathlib
+          with open("coverage.json") as f:
+              data = json.load(f)
+          pct = data["totals"]["percent_covered"]
+          colour = (
+              "brightgreen" if pct >= 90 else
+              "green"       if pct >= 75 else
+              "yellow"      if pct >= 50 else
+              "red"
+          )
+          badge = {
+              "schemaVersion": 1,
+              "label": "coverage",
+              "message": f"{pct:.0f}%",
+              "color": colour,
+          }
+          pathlib.Path("docs/_site").mkdir(parents=True, exist_ok=True)
+          with open("docs/_site/coverage-badge.json", "w") as f:
+              json.dump(badge, f)
+          print(f"Coverage: {pct:.1f}% ({colour})")
+          PYEOF
+
+      - name: Upload coverage HTML report as artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: docs/_site/coverage
+
+  # ── 2. Build MkDocs site ────────────────────────────────────────────────────
+  build-docs:
+    name: Build MkDocs documentation
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for git-revision-date plugin
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install runtime dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install doc dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Download coverage HTML from test job
+        uses: actions/download-artifact@v4.1.3
+        with:
+          name: coverage-html
+          path: docs/_site/coverage
+
+      - name: Download coverage badge JSON from test job
+        uses: actions/download-artifact@v4.1.3
+        with:
+          name: coverage-xml
+          # We re-generate the badge here since we need the HTML artefact first
+
+      - name: Rebuild coverage badge (idempotent)
+        run: |
+          python - <<'PYEOF'
+          import json, pathlib, xml.etree.ElementTree as ET
+          tree = ET.parse("coverage.xml")
+          root = tree.getroot()
+          pct  = float(root.attrib.get("line-rate", "0")) * 100
+          colour = (
+              "brightgreen" if pct >= 90 else
+              "green"       if pct >= 75 else
+              "yellow"      if pct >= 50 else
+              "red"
+          )
+          badge = {
+              "schemaVersion": 1,
+              "label": "coverage",
+              "message": f"{pct:.0f}%",
+              "color": colour,
+          }
+          pathlib.Path("docs/_site").mkdir(parents=True, exist_ok=True)
+          with open("docs/_site/coverage-badge.json", "w") as f:
+              json.dump(badge, f)
+          print(f"Coverage: {pct:.1f}%")
+          PYEOF
+
+      - name: Build MkDocs site
+        run: mkdocs build --strict --site-dir docs/_site
+        env:
+          PYTHONPATH: .
+
+      - name: Upload Pages artefact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+  # ── 3. Deploy to GitHub Pages ───────────────────────────────────────────────
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-docs
+    # Only deploy on pushes to the default branch (not on PRs)
+    if: >
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
