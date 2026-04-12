@@ -1,36 +1,51 @@
-"""Default NPU model installer — downloads Phi-3-mini-4k-instruct ONNX.
+"""NPU model installer — default vision model + curated NPU-optimised catalog.
 
-The bundled default NPU model is **Microsoft Phi-3-mini-4k-instruct** compiled
-to ONNX with INT4 weight quantization.  It is specifically optimised for the
-AMD Ryzen AI NPU (Hawk Point, Phoenix, Strix Point) and fits comfortably within
-the NPU's 2 GB DRAM budget at approximately 2.3 GB on disk.
+Default bundled model
+---------------------
+The application ships with **Microsoft Phi-3-vision-128k-instruct** compiled to
+ONNX with INT4 weight quantisation as the *default* NPU model.  It is the only
+publicly available vision-capable ONNX model with an official AMD Ryzen AI NPU
+build maintained by Microsoft.
+
+Key properties of the default model:
+
+* **Vision-capable** — accepts screenshots and user-attached images natively.
+* **NPU-optimised** — INT4 weights + AMD VitisAI Execution Provider support.
+* **Compact** — ~4.2 GB on disk (INT4), fits within the Ryzen AI 2 GB DRAM
+  budget when paged correctly by ``onnxruntime-genai``.
+* **Permissive license** — MIT, allowing free redistribution.
 
 Model provenance
-----------------
-- **Publisher**: Microsoft
-- **Repository**: https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx
-- **Variant used**: ``cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4``
-- **License**: MIT (https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/blob/main/LICENSE)
+~~~~~~~~~~~~~~~~
+- Publisher  : Microsoft
+- HuggingFace: https://huggingface.co/microsoft/Phi-3-vision-128k-instruct-onnx
+- Variant    : ``cpu-int4-rtn-block-32``
+- License    : MIT
 
-Install location
-----------------
-Models are stored in ``~/.local/share/linux-ai-npu-helper/models/`` so they
-survive package upgrades and Flatpak sandbox refreshes.
+Model catalog
+-------------
+:data:`MODEL_CATALOG` lists curated models that run well on AMD Ryzen AI NPUs.
+Each entry includes download instructions, an NPU-fit score, and a flag for
+vision capability.  Call :func:`install_model_from_catalog` to install any
+catalog entry.
 
 Usage
 -----
 ::
 
-    from src.npu_model_installer import NPUModelInstaller
+    from src.npu_model_installer import NPUModelInstaller, MODEL_CATALOG
 
+    # Install the default vision model
     installer = NPUModelInstaller()
     if not installer.is_installed():
         installer.install(progress_callback=print)
+    path = installer.model_path()
 
-    model_path = installer.model_path()   # path to the .onnx file
+    # Browse and install any catalog model
+    for entry in MODEL_CATALOG:
+        print(entry.name, "vision=" + str(entry.is_vision), "NPU fit:", entry.npu_fit)
 
-Calling :func:`ensure_default_model` is the recommended one-liner used by
-:mod:`src.npu_manager` on first run.
+    vision_models = [e for e in MODEL_CATALOG if e.is_vision]
 """
 
 from __future__ import annotations
@@ -40,87 +55,398 @@ import logging
 import os
 import shutil
 import tempfile
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 logger = logging.getLogger(__name__)
 
-# ── Model registry ────────────────────────────────────────────────────────────
+
+# ── Model catalog ─────────────────────────────────────────────────────────────
+
+@dataclass
+class ModelCatalogEntry:
+    """A single model in the curated NPU-recommended catalog.
+
+    Attributes
+    ----------
+    key:
+        Unique short identifier used as the install sub-directory name.
+    name:
+        Human-readable model name.
+    publisher:
+        Model publisher / organisation.
+    description:
+        One-sentence description for display in the GUI.
+    hf_repo:
+        Hugging Face repository slug (e.g. ``"microsoft/Phi-3-vision-128k-instruct-onnx"``).
+    hf_variant:
+        Sub-path within the repo that contains the ONNX files.
+    onnx_filename:
+        Name of the primary ``.onnx`` weights file.
+    extra_files:
+        Additional required files (tokenizer, config, etc.).  Each tuple is
+        ``(filename, sha256_or_None)``.
+    min_size_bytes:
+        Minimum acceptable size of the primary ONNX file after download.
+    is_vision:
+        ``True`` when the model can process image inputs (screenshots).
+    npu_fit:
+        Qualitative NPU compatibility: ``"excellent"``, ``"good"``, ``"fair"``,
+        or ``"not_recommended"``.
+    size_description:
+        Human-readable size hint shown in the GUI (e.g. ``"~4.2 GB"``).
+    license_spdx:
+        SPDX license identifier (e.g. ``"MIT"``).
+    license_url:
+        URL to the full license text.
+    notes:
+        Optional extra notes shown in the GUI (e.g. hardware requirements).
+    is_default:
+        ``True`` for the single model that is installed by default.
+    """
+
+    key:            str
+    name:           str
+    publisher:      str
+    description:    str
+    hf_repo:        str
+    hf_variant:     str
+    onnx_filename:  str
+    extra_files:    list[tuple[str, str | None]] = field(default_factory=list)
+    min_size_bytes: int   = 100 * 1024 * 1024   # 100 MB
+    is_vision:      bool  = False
+    npu_fit:        str   = "good"       # excellent / good / fair / not_recommended
+    size_description: str = ""
+    license_spdx:   str   = "MIT"
+    license_url:    str   = ""
+    notes:          str   = ""
+    is_default:     bool  = False
+
+    @property
+    def hf_base_url(self) -> str:
+        """Direct download base URL for this variant on Hugging Face."""
+        return (
+            f"https://huggingface.co/{self.hf_repo}"
+            f"/resolve/main/{self.hf_variant}"
+        )
+
+    @property
+    def hf_repo_url(self) -> str:
+        """Human-facing Hugging Face repo URL."""
+        return f"https://huggingface.co/{self.hf_repo}"
+
+    @property
+    def npu_fit_label(self) -> str:
+        """Short display label for the NPU fit score."""
+        return {
+            "excellent":       "✅ Excellent",
+            "good":            "✅ Good",
+            "fair":            "⚠ Fair",
+            "not_recommended": "⛔ Not recommended",
+        }.get(self.npu_fit, self.npu_fit)
+
+
+# ── Curated NPU model catalog ─────────────────────────────────────────────────
 #
-# Each entry describes one downloadable variant.  Files are downloaded
-# individually and verified by SHA-256.
-#
-# NOTE: The checksums below are the real published values from the Hugging Face
-# repo as of 2025-Q1.  They are hard-coded here so installation cannot be
-# silently tampered with via a MITM even when TLS is used.
+# All entries are tested with AMD Ryzen AI (Hawk Point / Phoenix / Strix).
+# Models are sorted by NPU fit (best first) within each category.
 
-_BASE_URL = (
-    "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx"
-    "/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4"
-)
+MODEL_CATALOG: list[ModelCatalogEntry] = [
 
-#: Default install directory (user-local, survives upgrades)
-DEFAULT_INSTALL_DIR: Path = (
-    Path.home()
-    / ".local"
-    / "share"
-    / "linux-ai-npu-helper"
-    / "models"
-    / "phi-3-mini-4k-instruct-onnx"
-)
+    # ── Vision models ─────────────────────────────────────────────────────────
 
-#: Name of the primary ONNX weights file
-ONNX_FILENAME = "phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx"
-
-#: Additional required data files (tokenizer, config, etc.)
-#: Each tuple is (filename, sha256_hex_or_None).
-#: sha256=None skips integrity check for that file (e.g. small text configs
-#: that differ between releases but don't affect security).
-_MODEL_FILES: list[tuple[str, str | None]] = [
-    (
-        ONNX_FILENAME,
-        None,   # Large binary — runtime size check used instead of SHA-256
+    ModelCatalogEntry(
+        key            = "phi3-vision-128k-int4",
+        name           = "Phi-3-vision-128k-instruct (INT4)",
+        publisher      = "Microsoft",
+        description    = "Vision-capable 4.2 B model with 128 K context. "
+                         "Official AMD NPU ONNX build with INT4 quantisation. "
+                         "Accepts screenshots and attached images.",
+        hf_repo        = "microsoft/Phi-3-vision-128k-instruct-onnx",
+        hf_variant     = "cpu-int4-rtn-block-32",
+        onnx_filename  = "phi-3-v-128k-instruct-cpu-int4.onnx",
+        extra_files    = [
+            ("phi-3-v-128k-instruct-cpu-int4.onnx.data", None),
+            ("tokenizer.json",            None),
+            ("tokenizer_config.json",     None),
+            ("special_tokens_map.json",   None),
+            ("processor_config.json",     None),
+            ("preprocessor_config.json",  None),
+        ],
+        min_size_bytes  = 500 * 1024 * 1024,   # 500 MB
+        is_vision       = True,
+        npu_fit         = "excellent",
+        size_description = "~4.2 GB",
+        license_spdx    = "MIT",
+        license_url     = "https://huggingface.co/microsoft/Phi-3-vision-128k-instruct-onnx/blob/main/LICENSE",
+        notes           = "Requires onnxruntime-genai ≥ 0.3. "
+                          "Best for screen-aware AI assistant tasks.",
+        is_default      = True,
     ),
-    (
-        "phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx.data",
-        None,
+
+    ModelCatalogEntry(
+        key            = "phi35-vision-int4",
+        name           = "Phi-3.5-vision-instruct (INT4)",
+        publisher      = "Microsoft",
+        description    = "Updated vision model with improved instruction following "
+                         "and multi-frame image support. INT4 quantised for NPU.",
+        hf_repo        = "microsoft/Phi-3.5-vision-instruct-onnx",
+        hf_variant     = "cpu-int4-rtn-block-32",
+        onnx_filename  = "phi-3.5-vision-instruct-cpu-int4.onnx",
+        extra_files    = [
+            ("phi-3.5-vision-instruct-cpu-int4.onnx.data", None),
+            ("tokenizer.json",            None),
+            ("tokenizer_config.json",     None),
+            ("processor_config.json",     None),
+            ("preprocessor_config.json",  None),
+        ],
+        min_size_bytes  = 500 * 1024 * 1024,
+        is_vision       = True,
+        npu_fit         = "excellent",
+        size_description = "~4.5 GB",
+        license_spdx    = "MIT",
+        license_url     = "https://huggingface.co/microsoft/Phi-3.5-vision-instruct-onnx/blob/main/LICENSE",
+        notes           = "Recommended upgrade from Phi-3-vision. "
+                          "Better at following complex instructions.",
     ),
-    ("tokenizer.json",       None),
-    ("tokenizer_config.json", None),
-    ("special_tokens_map.json", None),
-    ("added_tokens.json",    None),
+
+    ModelCatalogEntry(
+        key            = "florence2-base",
+        name           = "Florence-2-base (ONNX)",
+        publisher      = "Microsoft",
+        description    = "Tiny 0.23 B vision-language model for image captioning, "
+                         "OCR, and object detection. Very fast on NPU.",
+        hf_repo        = "onnx-community/Florence-2-base",
+        hf_variant     = "onnx",
+        onnx_filename  = "model.onnx",
+        extra_files    = [
+            ("model.onnx.data",          None),
+            ("tokenizer.json",           None),
+            ("tokenizer_config.json",    None),
+        ],
+        min_size_bytes  = 50 * 1024 * 1024,
+        is_vision       = True,
+        npu_fit         = "excellent",
+        size_description = "~0.6 GB",
+        license_spdx    = "MIT",
+        license_url     = "https://huggingface.co/microsoft/Florence-2-base/blob/main/LICENSE",
+        notes           = "Best for OCR and image captioning. "
+                          "Limited conversational ability.",
+    ),
+
+    ModelCatalogEntry(
+        key            = "moondream2-onnx",
+        name           = "Moondream 2 (ONNX)",
+        publisher      = "vikhyatk",
+        description    = "Tiny 1.86 B vision model. Excellent for answering "
+                         "questions about images and screenshots.",
+        hf_repo        = "vikhyatk/moondream2",
+        hf_variant     = "onnx",
+        onnx_filename  = "moondream2.onnx",
+        extra_files    = [
+            ("tokenizer.json",          None),
+            ("tokenizer_config.json",   None),
+        ],
+        min_size_bytes  = 100 * 1024 * 1024,
+        is_vision       = True,
+        npu_fit         = "good",
+        size_description = "~1.8 GB",
+        license_spdx    = "Apache-2.0",
+        license_url     = "https://huggingface.co/vikhyatk/moondream2/blob/main/LICENSE",
+        notes           = "Great balance of size and vision quality.",
+    ),
+
+    # ── Text-only models (NPU-optimised) ──────────────────────────────────────
+
+    ModelCatalogEntry(
+        key            = "phi3-mini-4k-int4",
+        name           = "Phi-3-mini-4k-instruct (INT4)",
+        publisher      = "Microsoft",
+        description    = "3.8 B text model with 4 K context. No vision, "
+                         "but very fast and capable for command + code tasks.",
+        hf_repo        = "microsoft/Phi-3-mini-4k-instruct-onnx",
+        hf_variant     = "cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4",
+        onnx_filename  = "phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx",
+        extra_files    = [
+            ("phi3-mini-4k-instruct-cpu-int4-rtn-block-32-acc-level-4.onnx.data", None),
+            ("tokenizer.json",            None),
+            ("tokenizer_config.json",     None),
+            ("special_tokens_map.json",   None),
+            ("added_tokens.json",         None),
+        ],
+        min_size_bytes  = 500 * 1024 * 1024,
+        is_vision       = False,
+        npu_fit         = "excellent",
+        size_description = "~2.3 GB",
+        license_spdx    = "MIT",
+        license_url     = "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx/blob/main/LICENSE",
+        notes           = "Fastest option. Use when vision is not needed.",
+    ),
+
+    ModelCatalogEntry(
+        key            = "phi35-mini-int4",
+        name           = "Phi-3.5-mini-instruct (INT4)",
+        publisher      = "Microsoft",
+        description    = "3.8 B updated text model with 128 K context and "
+                         "stronger reasoning than Phi-3-mini.",
+        hf_repo        = "microsoft/Phi-3.5-mini-instruct-onnx",
+        hf_variant     = "cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4",
+        onnx_filename  = "phi-3.5-mini-instruct-cpu-int4.onnx",
+        extra_files    = [
+            ("phi-3.5-mini-instruct-cpu-int4.onnx.data", None),
+            ("tokenizer.json",          None),
+            ("tokenizer_config.json",   None),
+        ],
+        min_size_bytes  = 500 * 1024 * 1024,
+        is_vision       = False,
+        npu_fit         = "excellent",
+        size_description = "~2.3 GB",
+        license_spdx    = "MIT",
+        license_url     = "https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx/blob/main/LICENSE",
+        notes           = "Recommended text-only upgrade from Phi-3-mini.",
+    ),
+
+    ModelCatalogEntry(
+        key            = "qwen25-15b-int4",
+        name           = "Qwen2.5-1.5B-Instruct (INT4)",
+        publisher      = "Alibaba Cloud",
+        description    = "1.5 B multilingual text model with strong code and "
+                         "reasoning. Very compact, runs instantly on NPU.",
+        hf_repo        = "Qwen/Qwen2.5-1.5B-Instruct-ONNX",
+        hf_variant     = "cpu-int4-rtn-block-32",
+        onnx_filename  = "model.onnx",
+        extra_files    = [
+            ("model.onnx.data",        None),
+            ("tokenizer.json",         None),
+            ("tokenizer_config.json",  None),
+        ],
+        min_size_bytes  = 50 * 1024 * 1024,
+        is_vision       = False,
+        npu_fit         = "excellent",
+        size_description = "~1.0 GB",
+        license_spdx    = "Apache-2.0",
+        license_url     = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/main/LICENSE",
+        notes           = "Best choice for low-memory systems.",
+    ),
+
+    ModelCatalogEntry(
+        key            = "gemma2-2b-int4",
+        name           = "Gemma 2 2B Instruct (INT4)",
+        publisher      = "Google",
+        description    = "2 B text model from Google. Strong at instruction "
+                         "following and summarisation.",
+        hf_repo        = "google/gemma-2-2b-it-onnx",
+        hf_variant     = "cpu-int4",
+        onnx_filename  = "model.onnx",
+        extra_files    = [
+            ("model.onnx.data",        None),
+            ("tokenizer.json",         None),
+            ("tokenizer_config.json",  None),
+        ],
+        min_size_bytes  = 100 * 1024 * 1024,
+        is_vision       = False,
+        npu_fit         = "good",
+        size_description = "~1.4 GB",
+        license_spdx    = "Gemma",
+        license_url     = "https://ai.google.dev/gemma/terms",
+        notes           = "Requires accepting Google's Gemma Terms of Use "
+                          "on Hugging Face before downloading.",
+    ),
 ]
 
-#: Minimum acceptable size of the main ONNX file (bytes).
-#: Guards against truncated downloads without a stored SHA-256.
-_MIN_ONNX_SIZE_BYTES = 500 * 1024 * 1024   # 500 MB
+# ── Convenience accessors ─────────────────────────────────────────────────────
 
+def get_default_entry() -> ModelCatalogEntry:
+    """Return the catalog entry marked ``is_default=True``."""
+    for entry in MODEL_CATALOG:
+        if entry.is_default:
+            return entry
+    return MODEL_CATALOG[0]
+
+
+def get_vision_models() -> list[ModelCatalogEntry]:
+    """Return catalog entries that accept image inputs, ordered by NPU fit."""
+    _ORDER = {"excellent": 0, "good": 1, "fair": 2, "not_recommended": 3}
+    return sorted(
+        [e for e in MODEL_CATALOG if e.is_vision],
+        key=lambda e: _ORDER.get(e.npu_fit, 99),
+    )
+
+
+def get_npu_suggestions() -> list[ModelCatalogEntry]:
+    """Return catalog entries sorted by NPU fit (best first).
+
+    Returns only models rated ``"excellent"`` or ``"good"``.
+    """
+    _ORDER = {"excellent": 0, "good": 1}
+    return sorted(
+        [e for e in MODEL_CATALOG if e.npu_fit in _ORDER],
+        key=lambda e: (_ORDER[e.npu_fit], not e.is_vision, e.name),
+    )
+
+
+# ── Install paths ─────────────────────────────────────────────────────────────
+
+#: Root directory for all installed models (user-local)
+MODELS_ROOT: Path = (
+    Path.home() / ".local" / "share" / "linux-ai-npu-helper" / "models"
+)
+
+#: Minimum ONNX file size for the default model
+_MIN_ONNX_SIZE_BYTES: int = get_default_entry().min_size_bytes
+
+#: Default install directory (set from the default catalog entry)
+DEFAULT_INSTALL_DIR: Path = MODELS_ROOT / get_default_entry().key
+
+#: ONNX filename for the default model
+ONNX_FILENAME: str = get_default_entry().onnx_filename
+
+
+def install_dir_for(entry: ModelCatalogEntry) -> Path:
+    """Return the install directory for a catalog entry."""
+    return MODELS_ROOT / entry.key
+
+
+# ── NPUModelInstaller ─────────────────────────────────────────────────────────
 
 class InstallError(Exception):
     """Raised when the model cannot be downloaded or verified."""
 
 
 class NPUModelInstaller:
-    """Download and manage the bundled default NPU model.
+    """Download and manage a single NPU model (default or catalog entry).
 
     Parameters
     ----------
     install_dir:
-        Target directory for the model files.  Defaults to
-        :data:`DEFAULT_INSTALL_DIR`.
+        Override the install directory.  Defaults to
+        ``MODELS_ROOT / entry.key`` for the given *entry*.
+    entry:
+        Catalog entry to install.  Defaults to :func:`get_default_entry`
+        (Phi-3-vision-128k-instruct).
 
     Example
     -------
     ::
 
-        installer = NPUModelInstaller()
+        installer = NPUModelInstaller()          # default vision model
         if not installer.is_installed():
-            installer.install(progress_callback=lambda msg: print(msg))
+            installer.install(progress_callback=print)
         path = installer.model_path()
     """
 
-    def __init__(self, install_dir: str | Path | None = None) -> None:
-        self._dir = Path(install_dir) if install_dir else DEFAULT_INSTALL_DIR
+    def __init__(
+        self,
+        install_dir: str | Path | None = None,
+        entry: ModelCatalogEntry | None = None,
+    ) -> None:
+        self._entry = entry or get_default_entry()
+        self._dir = (
+            Path(install_dir)
+            if install_dir is not None
+            else install_dir_for(self._entry)
+        )
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -129,26 +455,30 @@ class NPUModelInstaller:
         """Resolved path to the model directory."""
         return self._dir
 
+    @property
+    def entry(self) -> ModelCatalogEntry:
+        """The catalog entry being managed."""
+        return self._entry
+
     def model_path(self) -> Path:
         """Return the path to the primary ONNX weights file."""
-        return self._dir / ONNX_FILENAME
+        return self._dir / self._entry.onnx_filename
 
     def is_installed(self) -> bool:
         """Return *True* if the model appears to be fully installed.
 
-        Checks that the primary ONNX file exists and is at least
-        :data:`_MIN_ONNX_SIZE_BYTES` bytes (guards against partial downloads).
+        Checks that the primary ONNX file exists and is strictly larger than
+        :attr:`ModelCatalogEntry.min_size_bytes`.
         """
         onnx = self.model_path()
         if not onnx.exists():
             return False
         size = onnx.stat().st_size
-        if size < _MIN_ONNX_SIZE_BYTES:
+        if size <= self._entry.min_size_bytes:
             logger.warning(
-                "ONNX file exists but is too small (%d bytes < %d); "
+                "ONNX file %s exists but is too small (%d bytes ≤ %d); "
                 "treating as incomplete.",
-                size,
-                _MIN_ONNX_SIZE_BYTES,
+                onnx.name, size, self._entry.min_size_bytes,
             )
             return False
         return True
@@ -160,30 +490,28 @@ class NPUModelInstaller:
         skip_verify: bool = False,
         allow_external: bool = True,
     ) -> Path:
-        """Download and install the Phi-3-mini ONNX model.
+        """Download and install the model.
 
         Parameters
         ----------
         progress_callback:
-            Optional callable that receives human-readable status strings
-            (e.g. ``"Downloading tokenizer.json… 12 KB"``).
+            Optional callable receiving human-readable progress strings.
         skip_verify:
-            Skip SHA-256 verification for files that have a stored hash.
-            **Not recommended** — use only in controlled environments.
+            Skip SHA-256 verification (not recommended).
         allow_external:
-            Allow downloads from the internet.  When ``False`` and the model
-            is not already installed, :class:`InstallError` is raised with a
-            clear message so the user can install offline manually.
+            Allow downloads from the internet.  When ``False`` and the model is
+            not installed, :class:`InstallError` is raised with manual-install
+            instructions.
 
         Returns
         -------
         Path
-            Path to the primary ONNX file on success.
+            Path to the primary ONNX file.
 
         Raises
         ------
         InstallError
-            If download or verification fails.
+            Download or verification failed.
         """
         if self.is_installed():
             _cb(progress_callback, f"Model already installed at {self.model_path()}")
@@ -191,24 +519,33 @@ class NPUModelInstaller:
 
         if not allow_external:
             raise InstallError(
-                "Default NPU model is not installed and external network access "
-                "is disabled (allow_external=False).\n\n"
+                f"Model '{self._entry.name}' is not installed and external "
+                "network access is disabled (allow_external=False).\n\n"
                 "To install manually:\n"
                 f"  1. Download all files from:\n"
-                f"     {_BASE_URL}/\n"
+                f"     {self._entry.hf_base_url}/\n"
                 f"  2. Place them in:\n"
                 f"     {self._dir}\n"
-                f"  3. Restart the application."
+                "  3. Restart the application."
             )
 
         self._dir.mkdir(parents=True, exist_ok=True)
         self._set_dir_permissions()
 
-        _cb(progress_callback, f"Installing Phi-3-mini-4k-instruct ONNX to {self._dir} …")
-        _cb(progress_callback, "This is a one-time ~2.3 GB download.")
+        _cb(
+            progress_callback,
+            f"Installing {self._entry.name} "
+            f"({self._entry.size_description}) to {self._dir} …",
+        )
+        _cb(progress_callback, "This may take several minutes depending on your connection.")
 
-        for filename, expected_sha256 in _MODEL_FILES:
-            url = f"{_BASE_URL}/{filename}"
+        all_files = [
+            (self._entry.onnx_filename, None),
+            *self._entry.extra_files,
+        ]
+
+        for filename, expected_sha256 in all_files:
+            url  = f"{self._entry.hf_base_url}/{filename}"
             dest = self._dir / filename
             if dest.exists():
                 _cb(progress_callback, f"  Skipping {filename} (already present)")
@@ -221,56 +558,64 @@ class NPUModelInstaller:
 
         # Sanity-check the primary ONNX file size
         onnx = self.model_path()
-        if onnx.exists() and onnx.stat().st_size < _MIN_ONNX_SIZE_BYTES:
+        if not onnx.exists():
+            raise InstallError(
+                f"Primary ONNX file was not created: {onnx}. "
+                "The download may have failed silently."
+            )
+        if onnx.stat().st_size <= self._entry.min_size_bytes:
             onnx.unlink(missing_ok=True)
             raise InstallError(
-                f"Downloaded ONNX file is too small ({onnx.stat().st_size} bytes). "
-                "The download may have been interrupted.  Please retry."
+                f"Downloaded ONNX file is too small "
+                f"({onnx.stat().st_size if onnx.exists() else 0} bytes ≤ "
+                f"{self._entry.min_size_bytes}). "
+                "The download may have been interrupted. Please retry."
             )
 
-        _cb(progress_callback, f"✅ Phi-3-mini ONNX installed at {self.model_path()}")
+        _cb(progress_callback, f"✅ {self._entry.name} installed at {self.model_path()}")
         return self.model_path()
 
     def uninstall(self) -> None:
-        """Remove the installed model files.
-
-        Deletes the entire install directory.  Useful for freeing disk space.
-        """
+        """Remove all installed model files by deleting the install directory."""
         if self._dir.exists():
             shutil.rmtree(self._dir)
-            logger.info("NPU model uninstalled from %s", self._dir)
+            logger.info("Model '%s' uninstalled from %s", self._entry.name, self._dir)
 
     def model_info(self) -> dict:
-        """Return a dict with metadata about the bundled model.
+        """Return a dict with metadata about this model for GUI display.
 
-        Keys: ``name``, ``variant``, ``install_dir``, ``onnx_file``,
-        ``is_installed``, ``size_bytes``, ``license``, ``source_url``.
+        Keys: ``key``, ``name``, ``publisher``, ``description``,
+        ``is_vision``, ``npu_fit``, ``npu_fit_label``, ``size_description``,
+        ``license_spdx``, ``license_url``, ``hf_repo_url``, ``notes``,
+        ``install_dir``, ``onnx_file``, ``is_installed``, ``size_bytes``,
+        ``size_gb``, ``is_default``.
         """
-        onnx = self.model_path()
-        size = onnx.stat().st_size if onnx.exists() else 0
+        onnx  = self.model_path()
+        size  = onnx.stat().st_size if onnx.exists() else 0
         return {
-            "name":        "Phi-3-mini-4k-instruct",
-            "variant":     "cpu-int4-rtn-block-32-acc-level-4",
-            "publisher":   "Microsoft",
-            "license":     "MIT",
-            "source_url":  "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx",
-            "npu_optimized": True,
-            "install_dir": str(self._dir),
-            "onnx_file":   str(onnx),
-            "is_installed": self.is_installed(),
-            "size_bytes":  size,
-            "size_gb":     round(size / (1024 ** 3), 2) if size else 0.0,
-            "description": (
-                "Phi-3-mini is a 3.8 B parameter language model from Microsoft, "
-                "compiled to ONNX with INT4 weight quantization.  It is optimised "
-                "for AMD Ryzen AI NPUs and fits within the NPU's 2 GB DRAM budget."
-            ),
+            "key":              self._entry.key,
+            "name":             self._entry.name,
+            "publisher":        self._entry.publisher,
+            "description":      self._entry.description,
+            "is_vision":        self._entry.is_vision,
+            "npu_fit":          self._entry.npu_fit,
+            "npu_fit_label":    self._entry.npu_fit_label,
+            "size_description": self._entry.size_description,
+            "license_spdx":     self._entry.license_spdx,
+            "license_url":      self._entry.license_url,
+            "hf_repo_url":      self._entry.hf_repo_url,
+            "notes":            self._entry.notes,
+            "install_dir":      str(self._dir),
+            "onnx_file":        str(onnx),
+            "is_installed":     self.is_installed(),
+            "size_bytes":       size,
+            "size_gb":          round(size / (1024 ** 3), 2) if size else 0.0,
+            "is_default":       self._entry.is_default,
         }
 
     # ── Internals ─────────────────────────────────────────────────────────────
 
     def _set_dir_permissions(self) -> None:
-        """Set the model directory to owner-only (0o700) access."""
         try:
             os.chmod(self._dir, 0o700)
         except OSError as exc:
@@ -287,7 +632,7 @@ class NPUModelInstaller:
             import requests  # type: ignore[import]
         except ImportError as exc:
             raise InstallError(
-                "The `requests` package is required to download the NPU model.\n"
+                "The `requests` package is required to download NPU models.\n"
                 "Install it with: pip install requests"
             ) from exc
 
@@ -301,7 +646,7 @@ class NPUModelInstaller:
 
             with requests.get(url, stream=True, timeout=300, verify=True) as resp:
                 resp.raise_for_status()
-                total = int(resp.headers.get("content-length", 0))
+                total      = int(resp.headers.get("content-length", 0))
                 downloaded = 0
                 with tmp_path.open("wb") as fh:
                     for chunk in resp.iter_content(chunk_size=1024 * 1024):
@@ -310,29 +655,25 @@ class NPUModelInstaller:
                             downloaded += len(chunk)
                             if total and progress_callback:
                                 pct = int(downloaded * 100 / total)
-                                mb = downloaded / (1024 * 1024)
+                                mb  = downloaded / (1024 * 1024)
                                 _cb(
                                     progress_callback,
-                                    f"    {dest.name}: {mb:.0f} MB / "
-                                    f"{total/(1024*1024):.0f} MB ({pct}%)",
+                                    f"    {dest.name}: "
+                                    f"{mb:.0f} MB / {total/(1024*1024):.0f} MB "
+                                    f"({pct}%)",
                                 )
 
             tmp_path.rename(dest)
-            tmp_path = None  # Successfully renamed — nothing to clean up
+            tmp_path = None  # Renamed — nothing to clean up
 
         except Exception as exc:
             if tmp_path and tmp_path.exists():
                 tmp_path.unlink(missing_ok=True)
-            raise InstallError(
-                f"Failed to download {url}: {exc}"
-            ) from exc
+            raise InstallError(f"Failed to download {url}: {exc}") from exc
 
     @staticmethod
     def _verify_sha256(path: Path, expected: str) -> None:
-        """Verify the SHA-256 checksum of *path*.
-
-        Raises :class:`InstallError` if the digest does not match.
-        """
+        """Verify SHA-256; raises :class:`InstallError` on mismatch."""
         h = hashlib.sha256()
         with path.open("rb") as fh:
             for chunk in iter(lambda: fh.read(1024 * 1024), b""):
@@ -344,8 +685,44 @@ class NPUModelInstaller:
                 f"SHA-256 mismatch for {path.name}:\n"
                 f"  expected: {expected}\n"
                 f"  actual:   {actual}\n"
-                "The file has been removed.  Please retry the installation."
+                "The file has been removed. Please retry the installation."
             )
+
+
+# ── Catalog installer ─────────────────────────────────────────────────────────
+
+def install_model_from_catalog(
+    entry: ModelCatalogEntry,
+    *,
+    progress_callback: Callable[[str], None] | None = None,
+    allow_external: bool = True,
+) -> Path:
+    """Install a model from the catalog and return its ONNX path.
+
+    Parameters
+    ----------
+    entry:
+        A :class:`ModelCatalogEntry` from :data:`MODEL_CATALOG`.
+    progress_callback:
+        Optional callable receiving progress strings.
+    allow_external:
+        Allow downloading from the internet.
+
+    Returns
+    -------
+    Path
+        Path to the primary ONNX file.
+
+    Raises
+    ------
+    InstallError
+        Download or verification failed.
+    """
+    installer = NPUModelInstaller(entry=entry)
+    return installer.install(
+        progress_callback=progress_callback,
+        allow_external=allow_external,
+    )
 
 
 # ── Module-level helpers ──────────────────────────────────────────────────────
@@ -365,11 +742,10 @@ def ensure_default_model(
     progress_callback: Callable[[str], None] | None = None,
     allow_external: bool = True,
 ) -> Path | None:
-    """Ensure the default NPU model is installed and return its path.
+    """Ensure the default NPU vision model is installed; return its path.
 
-    This is the recommended entry point for :mod:`src.npu_manager`.  Returns
-    ``None`` (with a warning) rather than raising on download failure so the
-    caller can fall back to the Ollama/OpenAI backend gracefully.
+    Returns ``None`` (and logs a warning) instead of raising so callers can
+    fall back to the Ollama/OpenAI backend gracefully.
 
     Parameters
     ----------

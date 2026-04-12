@@ -37,17 +37,22 @@ logger = logging.getLogger(__name__)
 # Rules are checked in order; first match wins.
 
 _NPU_RULES: list[dict[str, Any]] = [
-    # Explicit ONNX path — always fine
+    # Explicit ONNX path — always fine (includes vision ONNX models)
     {"pattern": r"\.onnx$", "level": "ok",
+     "reason": None},
+    # ONNX vision models by known key — explicitly supported on NPU
+    {"pattern": r"\b(phi-3-v|phi-3\.5-vision|florence-2|florence2|moondream2)\b",
+     "level": "ok",
      "reason": None},
     # Very large models (>30 B params) — memory likely insufficient
     {"pattern": r"\b(70b|65b|40b|34b|33b)\b", "level": "no",
      "reason": "Models larger than ~30 B parameters typically exceed NPU memory limits. "
                "Use a quantized model ≤13 B (e.g. Q4_K_M) or run on CPU/GPU instead."},
-    # Known vision multimodal models — need custom ONNX export
-    {"pattern": r"\b(llava|bakllava|moondream|cogvlm|internvl|minicpm-v|phi-3-vision)\b",
+    # Vision models without ONNX — need custom ONNX export to run on NPU
+    {"pattern": r"\b(llava|bakllava|cogvlm|internvl|minicpm-v)\b",
      "level": "warn",
-     "reason": "Multimodal/vision models require a custom ONNX export to run on the NPU. "
+     "reason": "This vision model requires a custom ONNX export to run on the NPU. "
+               "Use the bundled Phi-3-vision ONNX or another catalog model instead. "
                "Inference will fall back to the CPU/GPU backend."},
     # Medium models without quantization — may be slow
     {"pattern": r"\b(13b|14b|20b|24b)\b.*?(?!q[0-9])", "level": "warn",
@@ -361,3 +366,59 @@ class ModelSelector:
             "npu_ok":       warning is None,
             "npu_warning":  warning or "",
         }
+
+    # ── NPU model suggestions ──────────────────────────────────────────────────
+
+    @staticmethod
+    def get_npu_suggestions() -> list[Any]:
+        """Return the curated catalog of NPU-recommended models.
+
+        Returns entries from :data:`~src.npu_model_installer.MODEL_CATALOG`
+        sorted by NPU fit (best first).  Vision-capable models are listed
+        before text-only models within the same fit tier.
+
+        Returns
+        -------
+        list[ModelCatalogEntry]
+            Catalog entries rated ``"excellent"`` or ``"good"``.
+
+        Example
+        -------
+        ::
+
+            for entry in ModelSelector.get_npu_suggestions():
+                print(entry.name, entry.npu_fit_label, "vision=" + str(entry.is_vision))
+        """
+        from src.npu_model_installer import get_npu_suggestions
+        return get_npu_suggestions()
+
+    @staticmethod
+    def get_vision_model_suggestions() -> list[Any]:
+        """Return only vision-capable models from the catalog.
+
+        Returns
+        -------
+        list[ModelCatalogEntry]
+            Vision-capable catalog entries sorted by NPU fit.
+
+        Example
+        -------
+        ::
+
+            for entry in ModelSelector.get_vision_model_suggestions():
+                print(entry.name, entry.size_description)
+        """
+        from src.npu_model_installer import get_vision_models
+        return get_vision_models()
+
+    @staticmethod
+    def get_default_npu_model_info() -> dict[str, Any]:
+        """Return metadata for the default bundled NPU vision model.
+
+        Returns
+        -------
+        dict
+            Same keys as :meth:`NPUModelInstaller.model_info`.
+        """
+        from src.npu_model_installer import NPUModelInstaller
+        return NPUModelInstaller().model_info()

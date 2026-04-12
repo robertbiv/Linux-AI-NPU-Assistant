@@ -67,18 +67,20 @@ _DEFAULTS: dict[str, Any] = {
     "npu": {
         # Path to a pre-compiled ONNX model for the AMD Ryzen AI NPU.
         #
-        # DEFAULT BUNDLED MODEL: Phi-3-mini-4k-instruct (INT4, ~2.3 GB)
+        # DEFAULT BUNDLED MODEL: Phi-3-vision-128k-instruct (INT4, ~4.2 GB)
         # ---------------------------------------------------------------
         # When this is "auto" (the default), the application uses the bundled
-        # Phi-3-mini-4k-instruct ONNX model.  On first launch it is downloaded
-        # automatically from:
-        #   https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-onnx
+        # Phi-3-vision-128k-instruct ONNX model — a VISION-CAPABLE model that
+        # can see screenshots and user-attached images.  On first launch it is
+        # downloaded automatically from:
+        #   https://huggingface.co/microsoft/Phi-3-vision-128k-instruct-onnx
         # and installed to:
-        #   ~/.local/share/linux-ai-npu-helper/models/phi-3-mini-4k-instruct-onnx/
+        #   ~/.local/share/linux-ai-npu-helper/models/phi3-vision-128k-int4/
         #
-        # Set to an absolute path to use a different ONNX model, e.g.:
+        # To use a different model, set this to an absolute ONNX path, e.g.:
         #   model_path: "/path/to/my-model.onnx"
         # Set to "" to disable the NPU backend entirely.
+        # See MODEL_CATALOG in src/npu_model_installer.py for all options.
         "model_path": "auto",
         # Execution provider preference order (VitisAI first, then fallbacks)
         "providers": ["VitisAIExecutionProvider", "CPUExecutionProvider"],
