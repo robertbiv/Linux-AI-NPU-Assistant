@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import threading
 import pytest
-from pathlib import Path
-from src.settings import SettingsManager, _deep_merge, _get_nested, _set_nested
+from src.settings import SettingsManager, _get_nested, _set_nested
+from src.utils import _deep_merge
 
 
 class TestDeepMerge:
@@ -169,7 +169,6 @@ class TestSettingsManager:
         sm.set("backend", "openai", save=False)  # should not raise
 
     def test_listener_error_logs_warning(self, tmp_path, mocker, caplog):
-        import logging
         sm = SettingsManager(path=None)
 
         def faulty_listener(k, v):
@@ -195,7 +194,7 @@ class TestSettingsManager:
         errors = []
         def writer(n):
             try:
-                sm.set(f"ollama.timeout", n, save=False)
+                sm.set("ollama.timeout", n, save=False)
             except Exception as e:
                 errors.append(e)
         threads = [threading.Thread(target=writer, args=(i,)) for i in range(50)]

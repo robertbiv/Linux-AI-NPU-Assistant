@@ -39,7 +39,6 @@ from typing import TYPE_CHECKING, Generator, Iterator
 from src.security import (
     RateLimiter,
     assert_local_url,
-    mask_secret,
     sanitize_ai_response,
 )
 
