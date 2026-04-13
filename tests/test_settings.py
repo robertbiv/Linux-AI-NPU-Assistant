@@ -169,16 +169,20 @@ class TestSettingsManager:
         sm.set("backend", "openai", save=False)  # should not raise
 
     def test_listener_error_logs_warning(self, tmp_path, mocker, caplog):
+        import logging
         sm = SettingsManager(path=None)
 
         def faulty_listener(k, v):
             raise RuntimeError("boom")
 
+        mock_logger = mocker.patch("src.settings.logger")
         sm.add_listener(faulty_listener)
-        import logging
-        with caplog.at_level(logging.WARNING):
-            sm.set("backend", "openai", save=False)
-        assert "Settings listener raised an error: boom" in caplog.text
+        sm.set("backend", "openai", save=False)
+        mock_logger.warning.assert_called_once()
+        args = mock_logger.warning.call_args[0]
+        assert args[0] == "Settings listener raised an error: %s"
+        assert isinstance(args[1], RuntimeError)
+        assert str(args[1]) == "boom"
 
     def test_to_config(self, tmp_path):
         sm = SettingsManager(path=None)
