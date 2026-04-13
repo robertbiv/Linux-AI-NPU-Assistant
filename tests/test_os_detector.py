@@ -5,12 +5,28 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from pathlib import Path
+from unittest.mock import MagicMock
 from src.os_detector import (
     OSInfo,
+    _detect_init,
     _detect_package_manager,
     _read_os_release,
     detect,
 )
+
+
+# ── _detect_init ──────────────────────────────────────────────────────────────
+
+
+class TestDetectInit:
+    def test_detect_init_oserror(self):
+        """Test that OSError when resolving /proc/1/exe falls back gracefully."""
+        with patch("src.os_detector.Path") as mock_path, patch(
+            "src.os_detector.shutil.which", return_value=None
+        ):
+            mock_path.return_value.resolve.side_effect = OSError
+            mock_path.return_value.exists.return_value = False
+            assert _detect_init() == "unknown"
 
 
 # ── _detect_package_manager ───────────────────────────────────────────────────
