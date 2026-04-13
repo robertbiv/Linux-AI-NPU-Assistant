@@ -68,7 +68,8 @@ def _find_terminal() -> tuple[str, str] | None:
         return None
 
     path_dirs = path_env.split(os.pathsep)
-    if sys.platform == "win32":
+    is_win = sys.platform == "win32"
+    if is_win:
         path_dirs.insert(0, os.curdir)
         pathext_source = os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH")
         pathext = [ext.upper() for ext in pathext_source.split(os.pathsep) if ext]
@@ -81,7 +82,7 @@ def _find_terminal() -> tuple[str, str] | None:
         normdir = os.path.normcase(dir_p)
         if normdir not in dir_contents:
             try:
-                if sys.platform == "win32":
+                if is_win:
                     dir_contents[normdir] = {f.upper() for f in os.listdir(dir_p)}
                 else:
                     dir_contents[normdir] = set(os.listdir(dir_p))
@@ -89,9 +90,9 @@ def _find_terminal() -> tuple[str, str] | None:
                 dir_contents[normdir] = set()
 
     for exe, style in _TERMINALS:
-        exe_upper = exe.upper() if sys.platform == "win32" else exe
+        exe_upper = exe.upper() if is_win else exe
 
-        if sys.platform == "win32":
+        if is_win:
             files = [exe_upper + ext for ext in pathext]
             if any(exe_upper.endswith(ext) for ext in pathext):
                 files.insert(0, exe_upper)
@@ -105,7 +106,7 @@ def _find_terminal() -> tuple[str, str] | None:
 
             for thefile in files:
                 if thefile in entries:
-                    full = os.path.join(p, exe if sys.platform != "win32" or thefile == exe_upper else thefile)
+                    full = os.path.join(p, exe if not is_win or thefile == exe_upper else thefile)
                     if os.access(full, os.X_OK) and not os.path.isdir(full):
                         return full, style
     return None
