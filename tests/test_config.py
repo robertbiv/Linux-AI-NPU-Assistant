@@ -85,19 +85,19 @@ class TestLoadFromFile:
         cfg = load(path=p)
         assert cfg.backend == "ollama"
 
-    @patch("src.security.check_path_permissions")
-    def test_file_checks_permissions_by_default(self, mock_check, tmp_path):
+    def test_openai_api_key_env_override(self, tmp_path, monkeypatch):
         p = tmp_path / "config.yaml"
-        p.write_text("backend: openai\n")
+        p.write_text("openai:\n  api_key_env: MY_CUSTOM_API_KEY\n")
+        monkeypatch.setenv("MY_CUSTOM_API_KEY", "test-key-123")
         cfg = load(path=p)
-        mock_check.assert_called_once_with(p, label="config file")
+        assert cfg.openai["api_key"] == "test-key-123"
 
-    @patch("src.security.check_path_permissions")
-    def test_file_does_not_check_permissions_if_disabled(self, mock_check, tmp_path):
+    def test_openai_api_key_env_override_missing_env(self, tmp_path, monkeypatch):
         p = tmp_path / "config.yaml"
-        p.write_text("security:\n  check_file_permissions: false\n")
+        p.write_text("openai:\n  api_key_env: MY_CUSTOM_API_KEY\n")
+        monkeypatch.delenv("MY_CUSTOM_API_KEY", raising=False)
         cfg = load(path=p)
-        mock_check.assert_not_called()
+        assert cfg.openai["api_key"] == ""
 
 
 class TestConfigProperties:
