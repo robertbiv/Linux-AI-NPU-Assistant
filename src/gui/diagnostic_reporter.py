@@ -75,7 +75,7 @@ class DiagnosticReporter:
         Returns
         -------
         dict
-            Keys: ``status``, ``backend``, ``url``, ``model``,
+            Keys: `status`, ``backend``, ``url``, ``model``,
             ``latency_ms``, ``error``.
         """
         backend = self._config.backend
@@ -142,7 +142,7 @@ class DiagnosticReporter:
         Returns
         -------
         dict
-            Keys: ``status``, ``available``, ``providers``,
+            Keys: `status`, ``available``, ``providers``,
             ``onnxruntime_version``, ``model_path``, ``model_exists``,
             ``error``.
         """
@@ -185,7 +185,7 @@ class DiagnosticReporter:
         Returns
         -------
         list[dict]
-            One dict per tool with keys: ``name``, ``status``,
+            One dict per tool with keys: ``name``, `status`,
             ``loaded``, ``unload_after_use``, ``description``.
         """
         if self._registry is None:
@@ -211,7 +211,7 @@ class DiagnosticReporter:
         Returns
         -------
         dict
-            Keys: ``status``, ``checks`` (list of individual check dicts),
+            Keys: `status`, ``checks`` (list of individual check dicts),
             ``issues``.
         """
         checks = []
@@ -277,7 +277,7 @@ class DiagnosticReporter:
         Returns
         -------
         dict
-            Keys: ``status``, ``path``, ``exists``, ``listener_count``,
+            Keys: `status`, ``path``, ``exists``, ``listener_count``,
             ``backend``, ``model``, ``error``.
         """
         result: dict[str, Any] = {
@@ -314,7 +314,7 @@ class DiagnosticReporter:
         Returns
         -------
         dict
-            Keys: ``status``, ``os_name``, ``os_version``, ``distro_id``,
+            Keys: `status`, ``os_name``, ``os_version``, ``distro_id``,
             ``package_manager``, ``desktop_environment``, ``shell``,
             ``kernel``, ``architecture``, ``python_version``,
             ``is_immutable``, ``app_version``.
@@ -368,7 +368,7 @@ class DiagnosticReporter:
         Returns
         -------
         dict
-            Keys: ``status``, ``allow_external``, ``backend_url``,
+            Keys: `status`, ``allow_external``, ``backend_url``,
             ``backend_url_is_local``, ``error``.
         """
         from src.security import is_local_url
@@ -413,7 +413,7 @@ class DiagnosticReporter:
         Returns
         -------
         list[dict]
-            One dict per dependency with keys: ``name``, ``status``,
+            One dict per dependency with keys: ``name``, `status`,
             ``version``, ``required``, ``detail``.
         """
         deps = [
@@ -457,7 +457,7 @@ class DiagnosticReporter:
         Returns
         -------
         dict
-            Keys: ``status``, ``passed``, ``failed``, ``errors``,
+            Keys: `status`, ``passed``, ``failed``, ``errors``,
             ``total``, ``duration_s``, ``output``.
         """
         import subprocess
