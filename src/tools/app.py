@@ -146,6 +146,7 @@ def _launch_app(name: str) -> tuple[bool, str]:
                 pass
 
     # 2. Exec= field from .desktop file
+    import shlex  # lazy
     for hit in _load_desktop_cache():
         if hit["name"].lower() != name.lower():
             continue
@@ -156,8 +157,8 @@ def _launch_app(name: str) -> tuple[bool, str]:
         exec_clean = re.sub(r"%[a-zA-Z]", "", exec_val).strip()
         try:
             subprocess.Popen(
-                exec_clean,
-                shell=True,
+                shlex.split(exec_clean),
+                shell=False,
                 start_new_session=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
