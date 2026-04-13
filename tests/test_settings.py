@@ -1,6 +1,7 @@
 """Tests for src/settings.py — SettingsManager."""
 from __future__ import annotations
 import json
+import logging
 import threading
 import pytest
 from pathlib import Path
@@ -168,7 +169,7 @@ class TestSettingsManager:
         sm.add_listener(faulty_listener)
         sm.set("backend", "openai", save=False)  # should not raise
 
-    def test_listener_error_logs_warning(self, tmp_path, mocker):
+    def test_listener_error_logs_warning(self, tmp_path, mocker, caplog):
         sm = SettingsManager(path=None)
 
         def faulty_listener(k, v):
