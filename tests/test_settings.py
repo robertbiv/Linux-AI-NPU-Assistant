@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 import pytest
+import logging
 from pathlib import Path
 from src.settings import SettingsManager, _deep_merge, _get_nested, _set_nested
 
