@@ -96,6 +96,27 @@ class TestDetect:
             assert info.path == "/usr/bin/zsh"
             assert info.family == "zsh"
 
+    def test_detect_from_env_empty(self):
+        with patch.dict(os.environ, {"SHELL": "   "}), \
+             patch("src.shell_detector._from_parent_proc", return_value=None), \
+             patch("src.shell_detector._from_user_db", return_value=None), \
+             patch("src.shell_detector._version", return_value=""):
+
+            info = detect()
+            assert info.path == "/bin/sh"
+            assert info.family == "sh"
+
+    def test_detect_from_env_not_exists(self):
+        with patch.dict(os.environ, {"SHELL": "/nonexistent/shell"}), \
+             patch("src.shell_detector.Path.exists", return_value=False), \
+             patch("src.shell_detector._from_parent_proc", return_value=None), \
+             patch("src.shell_detector._from_user_db", return_value=None), \
+             patch("src.shell_detector._version", return_value=""):
+
+            info = detect()
+            assert info.path == "/bin/sh"
+            assert info.family == "sh"
+
     def test_detect_from_parent_proc(self):
         with patch.dict(os.environ, {"SHELL": ""}), \
              patch("src.shell_detector._from_parent_proc", return_value="/usr/bin/fish"), \
@@ -137,9 +158,27 @@ class TestDetect:
             assert first is second
             assert mock_version.call_count == 1
 
+    def test_from_user_db_success(self):
+        mock_entry = MagicMock()
+        mock_entry.pw_shell = "/bin/zsh"
+        with patch("os.getuid", return_value=1000), \
+             patch("pwd.getpwuid", return_value=mock_entry):
+            assert _from_user_db() == "/bin/zsh"
+
+    def test_from_user_db_empty(self):
+        mock_entry = MagicMock()
+        mock_entry.pw_shell = ""
+        with patch("os.getuid", return_value=1000), \
+             patch("pwd.getpwuid", return_value=mock_entry):
+            assert _from_user_db() is None
+
     def test_from_user_db_exception(self):
         with patch("pwd.getpwuid", side_effect=KeyError):
             assert _from_user_db() is None
+
+    def test_from_parent_proc_exception(self):
+        with patch("os.getppid", side_effect=OSError):
+            assert _from_parent_proc() is None
 
     def test_from_parent_proc(self):
         with patch("os.getppid", return_value=123), \
