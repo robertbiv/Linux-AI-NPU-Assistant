@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import threading
 import pytest
+import logging
 from pathlib import Path
 from src.settings import SettingsManager, _deep_merge, _get_nested, _set_nested
 
@@ -168,7 +169,7 @@ class TestSettingsManager:
         sm.add_listener(faulty_listener)
         sm.set("backend", "openai", save=False)  # should not raise
 
-    def test_listener_error_logs_warning(self, tmp_path, mocker):
+    def test_listener_error_logs_warning(self, tmp_path, mocker, caplog):
         sm = SettingsManager(path=None)
 
         def faulty_listener(k, v):
