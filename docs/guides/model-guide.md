@@ -24,8 +24,6 @@ The application supports three kinds of AI model sources:
 2. Click the **⚙ Settings** button in the top-right corner.
 3. Select the **Models** tab.
 
-<!-- Image missing: ![Settings window — Models tab](../assets/models-tab.png) -->
-
 ---
 
 ## Selecting a model from your Ollama server

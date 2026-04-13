@@ -67,7 +67,7 @@ python -m src
 The test suite and coverage report are generated automatically on every push
 and published to GitHub Pages alongside this documentation.
 
-👉 **[View coverage report](coverage/index.html)**
+👉 **[View coverage report](https://robertbiv.github.io/Linux-AI-NPU-Helper/coverage/index.html)**
 
 ## Architecture overview
 
