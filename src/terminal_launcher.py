@@ -92,10 +92,13 @@ _CMD={quoted}
 printf 'Edit if needed, then press \\033[1mEnter\\033[0m to run  (Ctrl-C to cancel):\\n\\n'
 read -r -e -p '$ ' -i "$_CMD" _CONFIRMED
 if [ -n "$_CONFIRMED" ]; then
-    eval "$_CONFIRMED"
+    _TMP=$(mktemp)
+    echo "[ -f ~/.bashrc ] && source ~/.bashrc" > "$_TMP"
+    echo "$_CONFIRMED" >> "$_TMP"
+    echo "rm -f '$_TMP'" >> "$_TMP"
+    exec bash --rcfile "$_TMP" -i
 fi
-printf '\\n\\033[2m[Press Enter to close]\\033[0m'
-read -r _DONE
+exec bash -i
 """
 
 # zsh: vared — ZLE variable editor that accepts an initial value
@@ -103,13 +106,9 @@ _ZSH_SCRIPT = """\
 #!/usr/bin/env zsh
 _CMD={quoted}
 """ + _BANNER + """\
-printf 'Edit if needed, then press \\e[1mEnter\\e[0m to run  (Ctrl-C to cancel):\\n\\n'
-vared -p '$ ' -c _CMD
-if [ -n "$_CMD" ]; then
-    eval "$_CMD"
-fi
-printf '\\n\\e[2m[Press Enter to close]\\e[0m'
-read -r _DONE
+printf 'Press \\e[1mEnter\\e[0m to edit and run the command.\\n\\n'
+print -z "$_CMD"
+exec zsh -i
 """
 
 # fish: --init-command sets the commandline buffer before the prompt appears
@@ -133,15 +132,9 @@ _KSH_SCRIPT = """\
 #!/usr/bin/env ksh
 _CMD={quoted}
 """ + _BANNER + """\
-printf 'Type or edit the command, then press \\033[1mEnter\\033[0m (Ctrl-C to cancel):\\n\\n'
-printf '$ %s' "$_CMD"
-read -r _CONFIRMED
-_CONFIRMED="${_CONFIRMED:-$_CMD}"
-if [ -n "$_CONFIRMED" ]; then
-    eval "$_CONFIRMED"
-fi
-printf '\\n[Press Enter to close]'
-read -r _DONE
+printf 'Press \\033[1mUp Arrow\\033[0m then \\033[1mEnter\\033[0m to edit and run the command.\\n\\n'
+print -s "$_CMD"
+exec ksh -i
 """
 
 # Generic POSIX sh / dash / csh / others: just display and do a plain read
@@ -152,12 +145,14 @@ _CMD={quoted}
 printf 'Copy-paste or retype the command, then press Enter (Ctrl-C to cancel):\\n\\n'
 printf '$ '
 read -r _CONFIRMED
-_CONFIRMED="${_CONFIRMED:-$_CMD}"
+_CONFIRMED="${{_CONFIRMED:-$_CMD}}"
 if [ -n "$_CONFIRMED" ]; then
-    sh -c "$_CONFIRMED"
+    _TMP=$(mktemp)
+    echo "$_CONFIRMED" > "$_TMP"
+    echo "rm -f '$_TMP'" >> "$_TMP"
+    ENV="$_TMP" exec sh -i
 fi
-printf '\\n[Press Enter to close]'
-read -r _DONE
+exec sh -i
 """
 
 _FAMILY_SCRIPTS: dict[str, str] = {
