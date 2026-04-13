@@ -198,3 +198,21 @@ VALID_KEY="valid_value"
             info = detect()
         assert info.package_manager == "pacman"
         detect.cache_clear()
+
+    def test_detect_falls_back_to_legacy_release(self):
+        detect.cache_clear()
+        mock_legacy = {
+            "ID": "centos",
+            "NAME": "CentOS",
+            "VERSION_ID": "7",
+        }
+        with patch("src.os_detector._read_os_release", return_value={}), \
+             patch("src.os_detector._read_legacy_release", return_value=mock_legacy):
+            detect.cache_clear()
+            info = detect()
+        assert info.id == "centos"
+        assert info.name == "CentOS"
+        assert info.version == "7"
+        # Since it falls back to centos, and centos is matched in _ID_TO_PKG to dnf.
+        assert info.package_manager == "dnf"
+        detect.cache_clear()
