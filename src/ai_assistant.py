@@ -39,7 +39,6 @@ from typing import TYPE_CHECKING, Generator, Iterator
 from src.security import (
     RateLimiter,
     assert_local_url,
-    mask_secret,
     sanitize_ai_response,
 )
 
@@ -66,10 +65,12 @@ class AIAssistant:
     def __init__(self, config, npu_manager=None, registry=None, os_info=None) -> None:  # noqa: ANN001
         self._config = config
         self._npu_manager = npu_manager
-        self._registry = registry    # ToolRegistry | None
-        self._os_info = os_info      # OSInfo | None
+        self._registry = registry  # ToolRegistry | None
+        self._os_info = os_info  # OSInfo | None
         # Rate limiter — reads from config.security.rate_limit_per_minute (0 = disabled)
-        security_cfg: dict = config.get("security", {}) if hasattr(config, "get") else {}
+        security_cfg: dict = (
+            config.get("security", {}) if hasattr(config, "get") else {}
+        )
         rpm = int(security_cfg.get("rate_limit_per_minute", 0))
         self._rate_limiter = RateLimiter(calls_per_minute=rpm)
 
@@ -137,14 +138,20 @@ class AIAssistant:
         backend = self._config.backend
         if backend == "ollama":
             yield from self._ask_ollama(
-                prompt, history, screenshot_jpeg,
-                attachment_image_jpegs, attachment_texts,
+                prompt,
+                history,
+                screenshot_jpeg,
+                attachment_image_jpegs,
+                attachment_texts,
                 max_context_messages,
             )
         elif backend == "openai":
             yield from self._ask_openai(
-                prompt, history, screenshot_jpeg,
-                attachment_image_jpegs, attachment_texts,
+                prompt,
+                history,
+                screenshot_jpeg,
+                attachment_image_jpegs,
+                attachment_texts,
                 max_context_messages,
             )
         elif backend == "npu":
@@ -184,7 +191,7 @@ class AIAssistant:
         images_b64: list[str] = []
         if screenshot_jpeg:
             images_b64.append(base64.b64encode(screenshot_jpeg).decode())
-        for img in (attachment_images or []):
+        for img in attachment_images or []:
             images_b64.append(base64.b64encode(img).decode())
 
         # Build the current user message
@@ -223,7 +230,7 @@ class AIAssistant:
                 stream=stream,
                 timeout=timeout,
                 headers=headers,
-                verify=True,   # Always verify TLS certificates
+                verify=True,  # Always verify TLS certificates
             ) as resp:
                 resp.raise_for_status()
                 if stream:
@@ -250,7 +257,7 @@ class AIAssistant:
 
     # ── OpenAI-compatible backend ─────────────────────────────────────────────
 
-    def _ask_openai(
+    def _build_openai_payload(
         self,
         prompt: str,
         history: "ConversationHistory | None",
@@ -258,15 +265,10 @@ class AIAssistant:
         attachment_images: list[bytes] | None,
         attachment_texts: list[str] | None,
         max_context: int | None,
-    ) -> Iterator[str]:
+        model: str,
+        stream: bool,
+    ) -> dict:
         import base64
-
-        cfg = self._config.openai
-        base_url = cfg["base_url"].rstrip("/")
-        api_key = cfg.get("api_key", "")
-        model = cfg["model"]
-        timeout = cfg.get("timeout", 60)
-        stream = self._config.resources.get("stream_response", True)
 
         # Start from persisted conversation history, prepend system prompt
         system_msg: dict = {"role": "system", "content": self._build_system_prompt()}
@@ -293,16 +295,43 @@ class AIAssistant:
 
         if screenshot_jpeg:
             content.append(_img_block(screenshot_jpeg))
-        for img in (attachment_images or []):
+        for img in attachment_images or []:
             content.append(_img_block(img))
 
         messages.append({"role": "user", "content": content})
 
-        payload = {
+        return {
             "model": model,
             "messages": messages,
             "stream": stream,
         }
+
+    def _ask_openai(
+        self,
+        prompt: str,
+        history: "ConversationHistory | None",
+        screenshot_jpeg: bytes | None,
+        attachment_images: list[bytes] | None,
+        attachment_texts: list[str] | None,
+        max_context: int | None,
+    ) -> Iterator[str]:
+        cfg = self._config.openai
+        base_url = cfg["base_url"].rstrip("/")
+        api_key = cfg.get("api_key", "")
+        model = cfg["model"]
+        timeout = cfg.get("timeout", 60)
+        stream = self._config.resources.get("stream_response", True)
+
+        payload = self._build_openai_payload(
+            prompt,
+            history,
+            screenshot_jpeg,
+            attachment_images,
+            attachment_texts,
+            max_context,
+            model,
+            stream,
+        )
 
         try:
             import requests  # type: ignore[import]
@@ -329,7 +358,7 @@ class AIAssistant:
                 headers=headers,
                 stream=stream,
                 timeout=timeout,
-                verify=True,   # Always verify TLS certificates
+                verify=True,  # Always verify TLS certificates
             ) as resp:
                 resp.raise_for_status()
                 if stream:
@@ -374,9 +403,7 @@ class AIAssistant:
         memory is reclaimed right away (handled by NPUManager.run_inference).
         """
         if self._npu_manager is None:
-            raise RuntimeError(
-                "NPU backend selected but no NPUManager was provided."
-            )
+            raise RuntimeError("NPU backend selected but no NPUManager was provided.")
 
         try:
             import numpy as np  # type: ignore[import]
@@ -397,7 +424,9 @@ class AIAssistant:
 
         feeds: dict = {"input_ids": token_ids}
         if screenshot_jpeg:
-            feeds["image"] = np.frombuffer(screenshot_jpeg, dtype=np.uint8)[np.newaxis, :]
+            feeds["image"] = np.frombuffer(screenshot_jpeg, dtype=np.uint8)[
+                np.newaxis, :
+            ]
 
         # run_inference loads the model, runs it, then unloads it immediately
         outputs = self._npu_manager.run_inference(feeds)
@@ -415,6 +444,7 @@ class AIAssistant:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _build_text_prompt(
     user_prompt: str,

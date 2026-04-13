@@ -9,6 +9,8 @@ from typing import Any
 
 import yaml
 
+from src.utils import _deep_merge
+
 # Default paths searched in order
 _CONFIG_SEARCH_PATHS = [
     Path("config.yaml"),
@@ -232,17 +234,6 @@ _DEFAULTS: dict[str, Any] = {
         "check_file_permissions": True,
     },
 }
-
-
-def _deep_merge(base: dict, override: dict) -> dict:
-    """Recursively merge *override* into a copy of *base*."""
-    result = dict(base)
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
 
 
 class Config:

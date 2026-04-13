@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from src.security import check_path_permissions, secure_write
+from src.utils import _deep_merge
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +38,6 @@ _DEFAULT_SETTINGS_PATH = (
 
 # Type alias for change listeners: (key_path, new_value) → None
 ChangeListener = Callable[[str, Any], None]
-
-
-def _deep_merge(base: dict, override: dict) -> dict:
-    """Recursively merge *override* into a copy of *base*."""
-    result = dict(base)
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
 
 
 def _get_nested(d: dict, key_path: str) -> Any:

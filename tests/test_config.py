@@ -1,9 +1,7 @@
 """Tests for src/config.py."""
 from __future__ import annotations
-import pytest
-from pathlib import Path
-from unittest.mock import patch
-from src.config import load, Config, _deep_merge, _DEFAULTS
+from src.config import load
+from src.utils import _deep_merge
 
 
 class TestDeepMerge:

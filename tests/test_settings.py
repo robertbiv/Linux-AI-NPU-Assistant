@@ -1,11 +1,10 @@
 """Tests for src/settings.py — SettingsManager."""
 from __future__ import annotations
 import json
-import logging
 import threading
 import pytest
-from pathlib import Path
-from src.settings import SettingsManager, _deep_merge, _get_nested, _set_nested
+from src.settings import SettingsManager, _get_nested, _set_nested
+from src.utils import _deep_merge
 
 
 class TestDeepMerge:
@@ -195,7 +194,7 @@ class TestSettingsManager:
         errors = []
         def writer(n):
             try:
-                sm.set(f"ollama.timeout", n, save=False)
+                sm.set("ollama.timeout", n, save=False)
             except Exception as e:
                 errors.append(e)
         threads = [threading.Thread(target=writer, args=(i,)) for i in range(50)]

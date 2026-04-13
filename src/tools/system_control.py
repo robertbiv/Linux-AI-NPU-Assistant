@@ -283,8 +283,6 @@ class SystemControlTool(Tool):
 
     def _set_brightness(self, value: str) -> ToolResult:
         """Handle brightness set with a percentage or absolute value."""
-        import shutil    # lazy
-        import subprocess  # lazy
 
         if not value:
             return ToolResult(
