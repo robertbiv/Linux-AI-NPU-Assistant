@@ -41,6 +41,7 @@ def _scan_flatpak(query: str = "") -> list[dict]:
     out = run_command(
         ["flatpak", "list", "--app", "--columns=application,name,version"]
     )
+    q = query.lower()
     results: list[dict] = []
     for line in out.splitlines():
         parts = line.split("\t")
@@ -49,11 +50,7 @@ def _scan_flatpak(query: str = "") -> list[dict]:
         app_id = parts[0].strip()
         name = parts[1].strip() if len(parts) > 1 else app_id
         version = parts[2].strip() if len(parts) > 2 else ""
-        if (
-            query
-            and query.lower() not in name.lower()
-            and query.lower() not in app_id.lower()
-        ):
+        if q and q not in name.lower() and q not in app_id.lower():
             continue
         results.append(
             {"source": "flatpak", "name": name, "id": app_id, "version": version}
@@ -63,6 +60,7 @@ def _scan_flatpak(query: str = "") -> list[dict]:
 
 def _scan_snap(query: str = "") -> list[dict]:
     out = run_command(["snap", "list"])
+    q = query.lower()
     results: list[dict] = []
     for line in out.splitlines()[1:]:
         parts = line.split()
@@ -70,13 +68,14 @@ def _scan_snap(query: str = "") -> list[dict]:
             continue
         name = parts[0]
         version = parts[1] if len(parts) > 1 else ""
-        if query and query.lower() not in name.lower():
+        if q and q not in name.lower():
             continue
         results.append({"source": "snap", "name": name, "version": version})
     return results
 
 
 def _scan_packages(query: str = "") -> list[dict]:
+    q = query.lower()
     out = run_command(["dpkg-query", "-W", "-f=${Package}\t${Version}\t${Status}\n"])
     if out:
         results: list[dict] = []
@@ -84,7 +83,7 @@ def _scan_packages(query: str = "") -> list[dict]:
             parts = line.split("\t")
             if len(parts) < 3 or "installed" not in parts[2]:
                 continue
-            if query and query.lower() not in parts[0].lower():
+            if q and q not in parts[0].lower():
                 continue
             results.append({"source": "deb", "name": parts[0], "version": parts[1]})
         return results
@@ -92,7 +91,7 @@ def _scan_packages(query: str = "") -> list[dict]:
     results = []
     for line in out.splitlines():
         parts = line.split("\t")
-        if query and query.lower() not in parts[0].lower():
+        if q and q not in parts[0].lower():
             continue
         results.append(
             {
@@ -105,6 +104,7 @@ def _scan_packages(query: str = "") -> list[dict]:
 
 
 def _scan_path(query: str = "") -> list[dict]:
+    q = query.lower()
     results: list[dict] = []
     seen: set[str] = set()
     for d in os.environ.get("PATH", "").split(":"):
@@ -115,7 +115,7 @@ def _scan_path(query: str = "") -> list[dict]:
             for entry in p.iterdir():
                 if entry.name in seen:
                     continue
-                if query and query.lower() not in entry.name.lower():
+                if q and q not in entry.name.lower():
                     continue
                 if entry.is_file() and os.access(entry, os.X_OK):
                     seen.add(entry.name)
