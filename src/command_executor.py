@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import re
+import shlex
 import subprocess
 from dataclasses import dataclass
 from typing import Callable
@@ -141,11 +142,11 @@ class CommandExecutor:
 
         logger.info("Executing command: %s", command)
         try:
-            # Use shell=True so the command string is interpreted by /bin/sh.
+            # Safely parse the command string into a list of arguments.
             # The process is reaped by subprocess.run before we return.
+            args = shlex.split(command)
             result = subprocess.run(
-                command,
-                shell=True,  # noqa: S602
+                args,
                 capture_output=True,
                 text=True,
                 timeout=120,
