@@ -33,7 +33,11 @@ __all__ = [
     "ToolResult",
     "SearchResult",
     "build_default_registry",
+    "ScreenshotTool",
 ]
+
+
+from src.tools.screenshot_tool import ScreenshotTool
 
 
 def build_default_registry(tools_config: dict | None = None) -> ToolRegistry:

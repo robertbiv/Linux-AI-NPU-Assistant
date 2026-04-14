@@ -14,12 +14,27 @@ Design notes
 - ``max_messages`` caps the in-memory list so RAM stays bounded during
   very long sessions.  Older messages are trimmed from the *front* (oldest
   first), preserving the most recent context.
+
+Encryption
+----------
+Pass ``encrypt=True`` (the default when the ``cryptography`` package is
+installed) to store the history file as a Fernet-encrypted blob.  The
+symmetric key is kept in a separate ``history.key`` file in the same
+directory, protected with ``0o600`` permissions.
+
+::
+
+    history = ConversationHistory(encrypt=True)   # key auto-created
+    history.add("user", "Hello!")
+    # ~/.local/share/linux-ai-npu-assistant/history.enc  ← ciphertext
+    # ~/.local/share/linux-ai-npu-assistant/history.key  ← AES key (owner only)
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -31,9 +46,101 @@ from src.security import check_path_permissions, secure_write
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MAX_MESSAGES = 200
-_DEFAULT_HISTORY_FILE = (
-    Path.home() / ".local" / "share" / "linux-ai-npu-assistant" / "history.json"
+_DEFAULT_HISTORY_DIR = (
+    Path.home() / ".local" / "share" / "linux-ai-npu-assistant"
 )
+_DEFAULT_HISTORY_FILE = _DEFAULT_HISTORY_DIR / "history.json"
+_DEFAULT_HISTORY_ENC  = _DEFAULT_HISTORY_DIR / "history.enc"
+_DEFAULT_KEY_FILE     = _DEFAULT_HISTORY_DIR / "history.key"
+
+
+# ── Encryption helpers ────────────────────────────────────────────────────────
+
+def _fernet_available() -> bool:
+    """Return True if the *cryptography* package is importable."""
+    try:
+        from cryptography.fernet import Fernet  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def generate_encryption_key() -> bytes:
+    """Generate a new Fernet key (32 bytes, URL-safe base64-encoded).
+
+    Returns
+    -------
+    bytes
+        A 44-byte URL-safe base64 string suitable for ``Fernet(key)``.
+    """
+    from cryptography.fernet import Fernet
+    return Fernet.generate_key()
+
+
+def load_or_create_key(key_path: Path) -> bytes:
+    """Load an existing Fernet key from *key_path*, or create one.
+
+    The key file is written with ``0o600`` permissions (owner read/write
+    only).  If the file already exists and has correct permissions its
+    contents are returned unchanged.
+
+    Parameters
+    ----------
+    key_path:
+        Path to the ``history.key`` file.
+
+    Returns
+    -------
+    bytes
+        The Fernet key bytes.
+    """
+    if key_path.exists():
+        check_path_permissions(key_path, label="history key file")
+        key = key_path.read_bytes().strip()
+        if key:
+            return key
+        # Fall through to regenerate if file is empty / corrupt.
+
+    key = generate_encryption_key()
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    # Write atomically with 0o600 permissions.
+    tmp = key_path.with_suffix(".key.tmp")
+    try:
+        fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(key)
+        tmp.chmod(0o600)
+        tmp.replace(key_path)
+    except OSError:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+        raise
+
+    logger.info("Generated new history encryption key: %s", key_path)
+    return key
+
+
+def encrypt_data(plaintext: str, key: bytes) -> str:
+    """Encrypt *plaintext* with Fernet and return a base64 ciphertext string.
+
+    The returned string is ASCII-safe and can be written to a text file.
+    """
+    from cryptography.fernet import Fernet
+    f = Fernet(key)
+    return f.encrypt(plaintext.encode("utf-8")).decode("ascii")
+
+
+def decrypt_data(ciphertext: str, key: bytes) -> str:
+    """Decrypt Fernet *ciphertext* and return the original plaintext.
+
+    Raises
+    ------
+    cryptography.fernet.InvalidToken
+        If the key is wrong or the data was tampered with.
+    """
+    from cryptography.fernet import Fernet
+    f = Fernet(key)
+    return f.decrypt(ciphertext.encode("ascii")).decode("utf-8")
 
 
 @dataclass
@@ -68,10 +175,22 @@ class ConversationHistory:
         this limit the oldest messages are removed first.
     persist_path:
         JSON file path for persistence.  Pass ``None`` to disable disk
-        persistence (history lives only for the current session).
+        persistence (history lives only for the current session).  When
+        *encrypt* is ``True`` the path is rewritten with a ``.enc``
+        extension automatically.
     system_prompt:
         An optional system message prepended to every API call to establish
         the assistant's persona / instructions.
+    encrypt:
+        When ``True`` (and the ``cryptography`` package is installed), the
+        history file is encrypted with Fernet symmetric encryption.  A key
+        file is stored alongside the history file with ``0o600`` permissions.
+        Defaults to ``True`` when *cryptography* is available, ``False``
+        otherwise (graceful degradation).
+    encryption_key:
+        Optional pre-existing Fernet key bytes.  When omitted the key is
+        loaded from (or created in) a ``history.key`` file next to the
+        history file.
     """
 
     def __init__(
@@ -79,12 +198,50 @@ class ConversationHistory:
         max_messages: int = _DEFAULT_MAX_MESSAGES,
         persist_path: Path | str | None = _DEFAULT_HISTORY_FILE,
         system_prompt: str = "",
+        encrypt: bool | None = None,          # None → auto-detect
+        encryption_key: bytes | None = None,  # pre-supplied key (tests / custom setup)
     ) -> None:
         self._max = max_messages
-        self._path = Path(persist_path) if persist_path else None
         self._system_prompt = system_prompt
         self._messages: list[Message] = []
         self._lock = threading.Lock()
+
+        # ── Encryption setup ────────────────────────────────────────────────
+        # Auto-detect: enable if cryptography is importable and not disabled.
+        if encrypt is None:
+            encrypt = _fernet_available()
+        self._encrypt = encrypt and _fernet_available()
+
+        if self._encrypt:
+            # Derive paths
+            base = Path(persist_path) if persist_path else None
+            if base is not None:
+                # Store ciphertext in .enc sidecar next to the plain file.
+                self._path: Path | None = base.with_suffix(".enc")
+                key_path = base.parent / "history.key"
+            else:
+                self._path = None
+                key_path = _DEFAULT_KEY_FILE
+
+            if encryption_key is not None:
+                self._key: bytes | None = encryption_key
+            elif self._path is not None:
+                try:
+                    self._key = load_or_create_key(key_path)
+                except OSError as exc:
+                    logger.warning(
+                        "Could not load/create history encryption key (%s); "
+                        "disabling encryption for this session.",
+                        exc,
+                    )
+                    self._encrypt = False
+                    self._key = None
+                    self._path = Path(persist_path) if persist_path else None
+            else:
+                self._key = None
+        else:
+            self._path = Path(persist_path) if persist_path else None
+            self._key = None
 
         self._load()
 
