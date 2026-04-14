@@ -284,7 +284,7 @@ class AppTool:
                     text=True,
                     timeout=20,
                 )
-                lines = [l.strip() for l in proc.stdout.splitlines() if l.strip()][:30]
+                lines = [line_str.strip() for line_str in proc.stdout.splitlines() if line_str.strip()][:30]
                 for line in lines:
                     results.append(SearchResult(path="pkg_manager", snippet=line))
             except subprocess.TimeoutExpired:
