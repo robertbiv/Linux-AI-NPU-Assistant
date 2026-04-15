@@ -7,6 +7,7 @@ def _register_system_tools(registry: ToolRegistry, cfg: dict, global_unload: boo
     from src.tools.system_control  import SystemControlTool
     from src.tools.system_info     import SystemInfoTool
     from src.tools.process_info    import ProcessInfoTool
+    from src.tools.screenshot_tool import ScreenshotTool
 
     man_cfg        = cfg.get("man_reader", {})
     man_enabled    = bool(man_cfg.get("enabled", True))
@@ -60,4 +61,17 @@ def _register_system_tools(registry: ToolRegistry, cfg: dict, global_unload: boo
             schema=ProcessInfoTool.parameters_schema,
             factory=ProcessInfoTool,
             unload_after_use=pi_unload,
+        )
+
+    ss_cfg     = cfg.get("screenshot", {})
+    ss_enabled = bool(ss_cfg.get("enabled", True))
+    ss_unload  = bool(ss_cfg.get("unload_after_use", True))
+
+    if ss_enabled:
+        registry.register_lazy(
+            name=ScreenshotTool.name,
+            description=ScreenshotTool.description,
+            schema=ScreenshotTool.parameters_schema,
+            factory=ScreenshotTool,
+            unload_after_use=ss_unload,
         )
