@@ -141,6 +141,60 @@ if _HAS_QT:
             except Exception as exc:  # noqa: BLE001
                 self.error.emit(str(exc))
 
+    class _ImportCopyThread(QThread):
+        """Copies model files into the local models directory."""
+
+        progress = pyqtSignal(str)
+        finished = pyqtSignal(list)
+        error = pyqtSignal(str)
+
+        def __init__(
+            self, src_paths: list[str], dest_dir: Path, parent: QWidget | None = None
+        ) -> None:
+            super().__init__(parent)
+            self._src_paths = src_paths
+            self._dest_dir = dest_dir
+
+        def run(self) -> None:
+            try:
+                self._dest_dir.mkdir(parents=True, exist_ok=True)
+                copied_paths = []
+
+                for i, src in enumerate(self._src_paths):
+                    src_path = Path(src)
+                    dest_path = self._dest_dir / src_path.name
+
+                    if src_path.resolve() == dest_path.resolve():
+                        copied_paths.append(str(dest_path))
+                        continue
+
+                    self.progress.emit(
+                        f"Copying {src_path.name} ({i + 1}/{len(self._src_paths)})..."
+                    )
+
+                    total = src_path.stat().st_size
+                    copied = 0
+
+                    with src_path.open("rb") as fsrc:
+                        with dest_path.open("wb") as fdst:
+                            while True:
+                                buf = fsrc.read(1024 * 1024)
+                                if not buf:
+                                    break
+                                fdst.write(buf)
+                                copied += len(buf)
+                                if total:
+                                    pct = int(copied * 100 / total)
+                                    self.progress.emit(
+                                        f"Copying {src_path.name}... {pct}%"
+                                    )
+
+                    copied_paths.append(str(dest_path))
+
+                self.finished.emit(copied_paths)
+            except Exception as exc:  # noqa: BLE001
+                self.error.emit(str(exc))
+
     class _CustomDownloadThread(QThread):
         """Downloads a model directly from a URL."""
 
@@ -788,7 +842,7 @@ if _HAS_QT:
                 "ONNX models (*.onnx);;All files (*)",
             )
             if path:
-                self._register_file(path)
+                self._start_import_copy([path])
 
         def _download_from_url(self) -> None:
             url, ok = QInputDialog.getText(
@@ -843,6 +897,47 @@ if _HAS_QT:
 
             self._set_status(f"⛔ Download failed: {msg}", error=True)
 
+        def _start_import_copy(self, paths: list[str]) -> None:
+            from src.npu_model_installer import MODELS_ROOT
+
+            dest_dir = MODELS_ROOT / "custom_downloads"
+
+            self._btn_refresh.setEnabled(False)
+            self._btn_browse.setEnabled(False)
+            self._btn_download_url.setEnabled(False)
+            self._btn_use.setEnabled(False)
+            self._btn_delete.setEnabled(False)
+
+            self._set_status("Starting import...")
+
+            self._import_copy_thread = _ImportCopyThread(paths, dest_dir, parent=self)
+            self._import_copy_thread.progress.connect(self._on_import_progress)
+            self._import_copy_thread.finished.connect(self._on_import_finished)
+            self._import_copy_thread.error.connect(self._on_import_error)
+            self._import_copy_thread.start()
+
+        def _on_import_progress(self, msg: str) -> None:
+            self._set_status(msg)
+
+        def _on_import_finished(self, paths: list[str]) -> None:
+            self._btn_refresh.setEnabled(True)
+            self._btn_browse.setEnabled(True)
+            self._btn_download_url.setEnabled(True)
+            self._on_selection_changed(self._list.currentItem(), None)
+
+            for path in paths:
+                self._register_file(path)
+
+            self._set_status(f"✅ Imported {len(paths)} model(s)")
+
+        def _on_import_error(self, msg: str) -> None:
+            self._btn_refresh.setEnabled(True)
+            self._btn_browse.setEnabled(True)
+            self._btn_download_url.setEnabled(True)
+            self._on_selection_changed(self._list.currentItem(), None)
+
+            self._set_status(f"⛔ Import failed: {msg}", error=True)
+
         def _register_file(self, path: str) -> None:
             from src.model_selector import ModelInfo
 
@@ -864,10 +959,13 @@ if _HAS_QT:
             event.acceptProposedAction() if event.mimeData().hasUrls() else event.ignore()
 
         def _drop_event(self, event: Any) -> None:
+            paths = []
             for url in event.mimeData().urls():
                 path = url.toLocalFile()
                 if path.endswith((".onnx", ".gguf")):
-                    self._register_file(path)
+                    paths.append(path)
+            if paths:
+                self._start_import_copy(paths)
             event.acceptProposedAction()
 
         def _delete_model(self) -> None:
