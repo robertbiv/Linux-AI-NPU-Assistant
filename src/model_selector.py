@@ -345,6 +345,14 @@ class ModelSelector:
             self._config.get("model_selector", {}).get("size_warning_gb", 13.0)
             if hasattr(self._config, "get") else 13.0
         )
+        try:
+            from src.npu_benchmark import probe_hardware
+            hw = probe_hardware()
+            if hw.ram_gb > 0:
+                # NPU models share system RAM. Usually half of system RAM is a safe threshold
+                cfg_warn_gb = max(4.0, hw.ram_gb * 0.5)
+        except Exception:
+            pass
         if model.size_gb and model.size_gb > cfg_warn_gb:
             return (
                 f"⚠ NPU warning: This model is {model.size_gb:.1f} GB which may "

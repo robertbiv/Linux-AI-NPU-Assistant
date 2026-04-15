@@ -379,8 +379,8 @@ if _HAS_QT:
                 "fair": ("#856404", "#fff3cd"),
                 "not_recommended": ("#721c24", "#f8d7da"),
             }
-            fg, bg = fit_colors.get(self._entry.npu_fit, ("#333", "#eee"))
-            npu_lbl = QLabel(self._entry.npu_fit_label)
+            fg, bg = fit_colors.get(self._entry.hardware_adjusted_npu_fit(), ("#333", "#eee"))
+            npu_lbl = QLabel(self._entry.hardware_adjusted_label())
             npu_lbl.setStyleSheet(
                 f"color: {fg}; background: {bg}; "
                 "padding: 1px 5px; border-radius: 3px; font-size: 10px;"
