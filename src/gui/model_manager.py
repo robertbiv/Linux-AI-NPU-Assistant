@@ -36,15 +36,14 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 try:
-    from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
-    from PyQt5.QtGui import QColor, QFont
+    from PyQt5.QtCore import Qt, QThread, pyqtSignal
+    from PyQt5.QtGui import QColor
     from PyQt5.QtWidgets import (
         QCheckBox,
         QDialog,
         QDialogButtonBox,
         QFileDialog,
         QFrame,
-        QGroupBox,
         QHBoxLayout,
         QLabel,
         QListWidget,
@@ -274,8 +273,8 @@ if _HAS_QT:
                 "fair":            ("#856404", "#fff3cd"),
                 "not_recommended": ("#721c24", "#f8d7da"),
             }
-            fg, bg = fit_colors.get(self._entry.npu_fit, ("#333", "#eee"))
-            npu_lbl = QLabel(self._entry.npu_fit_label)
+            fg, bg = fit_colors.get(self._entry.hardware_adjusted_npu_fit(), ("#333", "#eee"))
+            npu_lbl = QLabel(self._entry.hardware_adjusted_label())
             npu_lbl.setStyleSheet(
                 f"color: {fg}; background: {bg}; "
                 "padding: 1px 5px; border-radius: 3px; font-size: 10px;"
