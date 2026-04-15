@@ -138,6 +138,26 @@ class TestNpuWarning:
         if w is not None and "GB" in w:
             pytest.fail(f"Unexpected size warning for small model: {w}")
 
+    def test_npu_tops_limits_size(self):
+        sel = ModelSelector(self._make_config())
+        mid_model = ModelInfo(name="phi3:medium", size_bytes=6 * 1024**3)
+
+        with patch("src.npu_benchmark.probe_hardware") as mock_probe:
+            hw = MagicMock()
+            hw.ram_gb = 32.0 # Lots of ram, normally ok up to 16gb
+
+            # Low NPU TOPS (<10), limit 3.0 GB
+            hw.npu_tops = 5.0
+            mock_probe.return_value = hw
+            w = sel.npu_warning(mid_model)
+            assert w is not None and "capabilities" in w
+
+            # Mid NPU TOPS (<30), limit 8.0 GB
+            hw.npu_tops = 20.0
+            mock_probe.return_value = hw
+            w = sel.npu_warning(mid_model)
+            assert w is None or "capabilities" not in w # Should be fine now
+
 
 class TestGetCurrentModel:
     def _make_config(self, backend, model):
