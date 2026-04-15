@@ -351,12 +351,19 @@ class ModelSelector:
             if hw.ram_gb > 0:
                 # NPU models share system RAM. Usually half of system RAM is a safe threshold
                 cfg_warn_gb = max(4.0, hw.ram_gb * 0.5)
+
+            # Speed/compute limits based on TOPS
+            if hw.npu_tops > 0:
+                if hw.npu_tops < 10:
+                    cfg_warn_gb = min(cfg_warn_gb, 3.0)
+                elif hw.npu_tops < 30:
+                    cfg_warn_gb = min(cfg_warn_gb, 8.0)
         except Exception:
             pass
         if model.size_gb and model.size_gb > cfg_warn_gb:
             return (
                 f"⚠ NPU warning: This model is {model.size_gb:.1f} GB which may "
-                f"exceed NPU memory (threshold: {cfg_warn_gb:.0f} GB). "
+                f"exceed NPU capabilities (threshold: {cfg_warn_gb:.0f} GB). "
                 "Consider a smaller or more aggressively quantized variant."
             )
 
