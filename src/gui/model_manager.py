@@ -36,15 +36,15 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 try:
-    from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
-    from PyQt5.QtGui import QColor, QFont
+    from PyQt5.QtCore import Qt, QThread, pyqtSignal
+    from PyQt5.QtGui import QColor
     from PyQt5.QtWidgets import (
         QCheckBox,
         QDialog,
         QDialogButtonBox,
         QFileDialog,
         QFrame,
-        QGroupBox,
+        QInputDialog,
         QHBoxLayout,
         QLabel,
         QListWidget,
@@ -59,16 +59,16 @@ try:
         QVBoxLayout,
         QWidget,
     )
+
     _HAS_QT = True
 except ImportError:
     _HAS_QT = False
     logger.warning("PyQt5 not installed — ModelManagerWidget unavailable.")
 
 if _HAS_QT:
-
     # ── Colours ───────────────────────────────────────────────────────────────
 
-    _BADGE_OK   = "#27ae60"
+    _BADGE_OK = "#27ae60"
     _BADGE_WARN = "#e67e22"
     _BADGE_FAIL = "#c0392b"
     _BADGE_SKIP = "#7f8c8d"
@@ -78,8 +78,9 @@ if _HAS_QT:
 
     class _FetchThread(QThread):
         """Fetches the backend model list in the background."""
+
         finished = pyqtSignal(list)
-        error    = pyqtSignal(str)
+        error = pyqtSignal(str)
 
         def __init__(self, selector: Any, parent: QWidget | None = None) -> None:
             super().__init__(parent)
@@ -93,9 +94,10 @@ if _HAS_QT:
 
     class _DownloadThread(QThread):
         """Downloads a catalog model in the background."""
-        progress  = pyqtSignal(str)   # progress message
-        finished  = pyqtSignal(str)   # path to installed ONNX
-        error     = pyqtSignal(str)   # error message
+
+        progress = pyqtSignal(str)  # progress message
+        finished = pyqtSignal(str)  # path to installed ONNX
+        error = pyqtSignal(str)  # error message
 
         def __init__(
             self,
@@ -107,6 +109,7 @@ if _HAS_QT:
 
         def run(self) -> None:
             from src.npu_model_installer import install_model_from_catalog, InstallError
+
             try:
                 path = install_model_from_catalog(
                     self._entry,
@@ -121,8 +124,9 @@ if _HAS_QT:
 
     class _RemoveThread(QThread):
         """Removes a catalog model in the background."""
+
         finished = pyqtSignal()
-        error    = pyqtSignal(str)
+        error = pyqtSignal(str)
 
         def __init__(self, entry: Any, parent: QWidget | None = None) -> None:
             super().__init__(parent)
@@ -130,9 +134,56 @@ if _HAS_QT:
 
         def run(self) -> None:
             from src.npu_model_installer import NPUModelInstaller
+
             try:
                 NPUModelInstaller(entry=self._entry).uninstall()
                 self.finished.emit()
+            except Exception as exc:  # noqa: BLE001
+                self.error.emit(str(exc))
+
+    class _CustomDownloadThread(QThread):
+        """Downloads a model directly from a URL."""
+
+        progress = pyqtSignal(str)
+        finished = pyqtSignal(str)
+        error = pyqtSignal(str)
+
+        def __init__(self, url: str, dest: Path, parent: QWidget | None = None) -> None:
+            super().__init__(parent)
+            self._url = url
+            self._dest = dest
+
+        def run(self) -> None:
+            try:
+                import requests  # type: ignore[import]
+                import tempfile
+                import os
+
+                dest_dir = self._dest.parent
+                dest_dir.mkdir(parents=True, exist_ok=True)
+
+                fd, tmp_str = tempfile.mkstemp(
+                    dir=dest_dir, prefix=f".{self._dest.name}.tmp."
+                )
+                tmp_path = Path(tmp_str)
+                os.close(fd)
+
+                with requests.get(
+                    self._url, stream=True, timeout=30, verify=True
+                ) as resp:
+                    resp.raise_for_status()
+                    total = int(resp.headers.get("content-length", 0))
+                    downloaded = 0
+                    with tmp_path.open("wb") as fh:
+                        for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                            if chunk:
+                                fh.write(chunk)
+                                downloaded += len(chunk)
+                                if total:
+                                    pct = int(downloaded * 100 / total)
+                                    self.progress.emit(f"Downloading... {pct}%")
+                tmp_path.rename(self._dest)
+                self.finished.emit(str(self._dest))
             except Exception as exc:  # noqa: BLE001
                 self.error.emit(str(exc))
 
@@ -178,8 +229,8 @@ if _HAS_QT:
             summary_box = QTextEdit()
             summary_box.setReadOnly(True)
             summary_box.setPlainText(
-                self._entry.tos_summary or
-                "Please read the full terms before downloading."
+                self._entry.tos_summary
+                or "Please read the full terms before downloading."
             )
             summary_box.setMaximumHeight(130)
             layout.addWidget(summary_box)
@@ -187,9 +238,7 @@ if _HAS_QT:
             # Read full terms button
             if self._entry.tos_url:
                 btn_read = QPushButton("🌐 Read full terms online…")
-                btn_read.clicked.connect(
-                    lambda: webbrowser.open(self._entry.tos_url)
-                )
+                btn_read.clicked.connect(lambda: webbrowser.open(self._entry.tos_url))
                 layout.addWidget(btn_read)
 
             # Acceptance checkbox
@@ -227,13 +276,14 @@ if _HAS_QT:
         """
 
         download_requested = pyqtSignal(object)
-        remove_requested   = pyqtSignal(object)
-        use_requested      = pyqtSignal(object, str)
+        remove_requested = pyqtSignal(object)
+        use_requested = pyqtSignal(object, str)
 
-        def __init__(self, entry: Any, settings_manager: Any,
-                     parent: QWidget | None = None) -> None:
+        def __init__(
+            self, entry: Any, settings_manager: Any, parent: QWidget | None = None
+        ) -> None:
             super().__init__(parent)
-            self._entry   = entry
+            self._entry = entry
             self._manager = settings_manager
             self._installer = None
             self._build_ui()
@@ -241,6 +291,7 @@ if _HAS_QT:
 
         def _build_ui(self) -> None:
             from src.npu_model_installer import NPUModelInstaller
+
             self._installer = NPUModelInstaller(entry=self._entry)
 
             self.setFrameShape(QFrame.StyledPanel)
@@ -269,9 +320,9 @@ if _HAS_QT:
 
             # NPU fit badge
             fit_colors = {
-                "excellent":       ("#155724", "#d4edda"),
-                "good":            ("#155724", "#d4edda"),
-                "fair":            ("#856404", "#fff3cd"),
+                "excellent": ("#155724", "#d4edda"),
+                "good": ("#155724", "#d4edda"),
+                "fair": ("#856404", "#fff3cd"),
                 "not_recommended": ("#721c24", "#f8d7da"),
             }
             fg, bg = fit_colors.get(self._entry.npu_fit, ("#333", "#eee"))
@@ -339,7 +390,7 @@ if _HAS_QT:
             # Progress bar (hidden when idle)
             self._progress_bar = QProgressBar()
             self._progress_bar.setTextVisible(False)
-            self._progress_bar.setMaximum(0)   # indeterminate
+            self._progress_bar.setMaximum(0)  # indeterminate
             self._progress_bar.setFixedHeight(6)
             self._progress_bar.hide()
             outer.addWidget(self._progress_bar)
@@ -417,9 +468,7 @@ if _HAS_QT:
 
         def on_download_error(self, msg: str) -> None:
             self._progress_bar.hide()
-            self._status.setText(
-                f"<span style='color:{_BADGE_FAIL}'>⛔ {msg}</span>"
-            )
+            self._status.setText(f"<span style='color:{_BADGE_FAIL}'>⛔ {msg}</span>")
             self._status.setTextFormat(Qt.RichText)
             self.refresh_state()
 
@@ -449,12 +498,14 @@ if _HAS_QT:
 
         model_activated = pyqtSignal(str)  # ONNX path chosen as active
 
-        def __init__(self, settings_manager: Any, parent: QWidget | None = None) -> None:
+        def __init__(
+            self, settings_manager: Any, parent: QWidget | None = None
+        ) -> None:
             super().__init__(parent)
             self._manager = settings_manager
-            self._cards: dict[str, _CatalogCard] = {}   # key → card
+            self._cards: dict[str, _CatalogCard] = {}  # key → card
             self._dl_threads: dict[str, _DownloadThread] = {}
-            self._rm_threads: dict[str, _RemoveThread]   = {}
+            self._rm_threads: dict[str, _RemoveThread] = {}
             self._build_ui()
 
         def _build_ui(self) -> None:
@@ -532,9 +583,7 @@ if _HAS_QT:
             thread.finished.connect(
                 lambda path, k=entry.key: self._on_dl_finished(k, path)
             )
-            thread.error.connect(
-                lambda msg, k=entry.key: self._on_dl_error(k, msg)
-            )
+            thread.error.connect(lambda msg, k=entry.key: self._on_dl_error(k, msg))
             self._dl_threads[entry.key] = thread
             thread.start()
 
@@ -561,12 +610,8 @@ if _HAS_QT:
             if entry.key in self._rm_threads:
                 return
             thread = _RemoveThread(entry, parent=self)
-            thread.finished.connect(
-                lambda k=entry.key: self._on_rm_finished(k)
-            )
-            thread.error.connect(
-                lambda msg, k=entry.key: self._on_rm_error(k, msg)
-            )
+            thread.finished.connect(lambda k=entry.key: self._on_rm_finished(k))
+            thread.error.connect(lambda msg, k=entry.key: self._on_rm_error(k, msg))
             self._rm_threads[entry.key] = thread
             thread.start()
 
@@ -588,19 +633,18 @@ if _HAS_QT:
             self._manager.set("backend", "npu")
             self._manager.set("npu.model_path", path)
             self.model_activated.emit(path)
-            logger.info(
-                "NPU model set to %r (key=%r)", path, entry.key
-            )
+            logger.info("NPU model set to %r (key=%r)", path, entry.key)
 
     # ── Backend model list ────────────────────────────────────────────────────
 
     class _BackendModelPanel(QWidget):
         """Panel showing models from the active Ollama/OpenAI backend."""
 
-        def __init__(self, settings_manager: Any,
-                     parent: QWidget | None = None) -> None:
+        def __init__(
+            self, settings_manager: Any, parent: QWidget | None = None
+        ) -> None:
             super().__init__(parent)
-            self._manager  = settings_manager
+            self._manager = settings_manager
             self._selector = None
             self._models: list[Any] = []
             self._build_ui()
@@ -610,6 +654,7 @@ if _HAS_QT:
         def _build_selector(self) -> None:
             try:
                 from src.model_selector import ModelSelector
+
                 cfg = self._manager.to_config()
                 self._selector = ModelSelector(cfg)
             except Exception as exc:  # noqa: BLE001
@@ -624,8 +669,8 @@ if _HAS_QT:
             self._list.currentItemChanged.connect(self._on_selection_changed)
             self._list.setAcceptDrops(True)
             self._list.dragEnterEvent = self._drag_enter
-            self._list.dragMoveEvent  = self._drag_move
-            self._list.dropEvent      = self._drop_event
+            self._list.dragMoveEvent = self._drag_move
+            self._list.dropEvent = self._drop_event
             layout.addWidget(self._list)
 
             hint = QLabel("💡 Drop .onnx or .gguf files here to add a model")
@@ -644,6 +689,13 @@ if _HAS_QT:
             self._btn_browse.setToolTip("Open a file dialog to add an ONNX model file")
             self._btn_browse.clicked.connect(self._browse_onnx)
             btn_row.addWidget(self._btn_browse)
+
+            self._btn_download_url = QPushButton("🔗 Download URL…")
+            self._btn_download_url.setToolTip(
+                "Download an ONNX or GGUF model directly from a URL"
+            )
+            self._btn_download_url.clicked.connect(self._download_from_url)
+            btn_row.addWidget(self._btn_download_url)
 
             self._btn_use = QPushButton("✔ Use this model")
             self._btn_use.setEnabled(False)
@@ -697,8 +749,8 @@ if _HAS_QT:
             else:
                 badge, colour = "⚠", _BADGE_WARN
             size_str = f"  {model.size_gb:.1f} GB" if model.size_gb else ""
-            label    = f"{badge} {model.name}{size_str}"
-            item     = QListWidgetItem(label)
+            label = f"{badge} {model.name}{size_str}"
+            item = QListWidgetItem(label)
             item.setData(Qt.UserRole, model)
             item.setToolTip(warning or "NPU compatible")
             item.setForeground(QColor(colour))
@@ -730,14 +782,70 @@ if _HAS_QT:
 
         def _browse_onnx(self) -> None:
             path, _ = QFileDialog.getOpenFileName(
-                self, "Select ONNX model file", str(Path.home()),
+                self,
+                "Select ONNX model file",
+                str(Path.home()),
                 "ONNX models (*.onnx);;All files (*)",
             )
             if path:
                 self._register_file(path)
 
+        def _download_from_url(self) -> None:
+            url, ok = QInputDialog.getText(
+                self,
+                "Download Model",
+                "Enter direct download URL for .onnx or .gguf model (e.g. Hugging Face):",
+            )
+            if not ok or not url.strip():
+                return
+
+            url = url.strip()
+            filename = url.split("/")[-1].split("?")[0]
+            if not filename.endswith((".onnx", ".gguf")):
+                filename = "model.onnx"
+
+            from src.npu_model_installer import MODELS_ROOT
+
+            dest_dir = MODELS_ROOT / "custom_downloads"
+            dest_path = dest_dir / filename
+
+            self._btn_refresh.setEnabled(False)
+            self._btn_browse.setEnabled(False)
+            self._btn_download_url.setEnabled(False)
+            self._btn_use.setEnabled(False)
+            self._btn_delete.setEnabled(False)
+
+            self._set_status("Starting download...")
+
+            self._dl_url_thread = _CustomDownloadThread(url, dest_path, parent=self)
+            self._dl_url_thread.progress.connect(self._on_dl_url_progress)
+            self._dl_url_thread.finished.connect(self._on_dl_url_finished)
+            self._dl_url_thread.error.connect(self._on_dl_url_error)
+            self._dl_url_thread.start()
+
+        def _on_dl_url_progress(self, msg: str) -> None:
+            self._set_status(msg)
+
+        def _on_dl_url_finished(self, path: str) -> None:
+            self._btn_refresh.setEnabled(True)
+            self._btn_browse.setEnabled(True)
+            self._btn_download_url.setEnabled(True)
+            self._on_selection_changed(self._list.currentItem(), None)
+
+            self._register_file(path)
+            self._set_status(f"✅ Downloaded: {path}")
+
+        def _on_dl_url_error(self, msg: str) -> None:
+            self._btn_refresh.setEnabled(True)
+            self._btn_browse.setEnabled(True)
+            self._btn_download_url.setEnabled(True)
+            self._on_selection_changed(self._list.currentItem(), None)
+
+            self._set_status(f"⛔ Download failed: {msg}", error=True)
+
         def _register_file(self, path: str) -> None:
             from src.model_selector import ModelInfo
+
             m = ModelInfo(name=path)
             self._models.append(m)
             self._add_list_item(m)
@@ -766,11 +874,12 @@ if _HAS_QT:
             m = self._selected_model()
             if m is None:
                 return
-            name    = m.name
+            name = m.name
             is_file = name.endswith((".onnx", ".gguf")) and Path(name).exists()
             if is_file:
                 reply = QMessageBox.question(
-                    self, "Delete model file",
+                    self,
+                    "Delete model file",
                     f"Remove <b>{name}</b> from the list?<br>Also delete from disk?",
                     QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
                     QMessageBox.No,
@@ -782,21 +891,27 @@ if _HAS_QT:
                         Path(name).unlink()
                         self._set_status(f"🗑 Deleted file: {name}")
                     except OSError as exc:
-                        QMessageBox.critical(self, "Error", f"Could not delete file:\n{exc}")
+                        QMessageBox.critical(
+                            self, "Error", f"Could not delete file:\n{exc}"
+                        )
                         return
                 self._remove_selected_item()
             else:
                 reply = QMessageBox.question(
-                    self, "Remove model",
+                    self,
+                    "Remove model",
                     f"Remove Ollama model <b>{name}</b>?",
-                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No,
                 )
                 if reply != QMessageBox.Yes:
                     return
                 try:
                     result = subprocess.run(
                         ["ollama", "rm", name],
-                        capture_output=True, text=True, timeout=30,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
                     )
                     if result.returncode == 0:
                         self._set_status(f"🗑 Removed model: {name}")
@@ -807,8 +922,9 @@ if _HAS_QT:
                         )
                 except FileNotFoundError:
                     QMessageBox.critical(
-                        self, "Error",
-                        "ollama command not found. Is Ollama installed and on PATH?"
+                        self,
+                        "Error",
+                        "ollama command not found. Is Ollama installed and on PATH?",
                     )
                 except subprocess.TimeoutExpired:
                     QMessageBox.critical(self, "Error", "ollama rm timed out.")
