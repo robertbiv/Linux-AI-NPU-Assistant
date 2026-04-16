@@ -47,10 +47,18 @@ _DEFAULTS: dict[str, Any] = {
         "stream_response": True,
     },
     # ── AI backend ────────────────────────────────────────────────────────────
-    # Supported backends: "ollama", "openai", "npu"
+    # Supported backends: "ollama", "openai", "npu", "ollama+npu"
     # NOTE: "openai" here means any *local* OpenAI-compatible server such as
     # LM Studio (default port 1234) or llama.cpp server.  The application
     # blocks all external URLs by default (see network.allow_external above).
+    #
+    # "ollama+npu" — hybrid mode: keeps your existing Ollama server running
+    # (all your GPU/CPU models remain available) while also exposing any
+    # installed NPU ONNX model.  Requests are routed automatically:
+    #   - selected model ends with ".onnx"  →  NPU backend
+    #   - any other model name              →  Ollama backend
+    # This lets you install NPU support on top of a running Ollama without
+    # replacing or reconfiguring anything.
     "backend": "ollama",
     "ollama": {
         "base_url": "http://localhost:11434",

@@ -150,6 +150,55 @@ class TestAskDispatch:
         mock.assert_called_once()
         assert tokens == ["npu"]
 
+    def test_dispatches_to_ollama_npu(self):
+        cfg = _make_config(backend="ollama+npu")
+        assistant = AIAssistant(cfg)
+        with patch.object(assistant, "_ask_ollama_npu", return_value=iter(["hybrid"])) as mock:
+            tokens = list(assistant.ask("hello"))
+        mock.assert_called_once()
+        assert tokens == ["hybrid"]
+
+
+# ── ollama+npu hybrid routing ────────────────────────────────────────────────
+
+
+class TestAskOllamaNpu:
+    def _make_hybrid_config(self, npu_model=""):
+        cfg = _make_config(backend="ollama+npu", npu_model=npu_model)
+        return cfg
+
+    def test_routes_to_npu_when_onnx_model_set(self):
+        cfg = self._make_hybrid_config(npu_model="/path/to/model.onnx")
+        npu = MagicMock()
+        assistant = AIAssistant(cfg, npu_manager=npu)
+        with patch.object(assistant, "_ask_npu", return_value=iter(["npu_tok"])) as npu_mock, \
+             patch.object(assistant, "_ask_ollama", return_value=iter(["ol_tok"])) as ol_mock:
+            tokens = list(assistant.ask("hello"))
+        npu_mock.assert_called_once()
+        ol_mock.assert_not_called()
+        assert tokens == ["npu_tok"]
+
+    def test_routes_to_ollama_when_no_npu_model(self):
+        cfg = self._make_hybrid_config(npu_model="")
+        assistant = AIAssistant(cfg)
+        with patch.object(assistant, "_ask_npu", return_value=iter(["npu_tok"])) as npu_mock, \
+             patch.object(assistant, "_ask_ollama", return_value=iter(["ol_tok"])) as ol_mock:
+            tokens = list(assistant.ask("hello"))
+        ol_mock.assert_called_once()
+        npu_mock.assert_not_called()
+        assert tokens == ["ol_tok"]
+
+    def test_routes_to_ollama_when_non_onnx_model_set(self):
+        cfg = self._make_hybrid_config(npu_model="")
+        cfg.npu = {"model_path": "llama3:8b"}  # non-.onnx path
+        assistant = AIAssistant(cfg)
+        with patch.object(assistant, "_ask_npu", return_value=iter(["npu_tok"])) as npu_mock, \
+             patch.object(assistant, "_ask_ollama", return_value=iter(["ol_tok"])) as ol_mock:
+            tokens = list(assistant.ask("hello"))
+        ol_mock.assert_called_once()
+        npu_mock.assert_not_called()
+        assert tokens == ["ol_tok"]
+
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 

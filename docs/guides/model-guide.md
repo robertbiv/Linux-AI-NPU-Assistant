@@ -18,6 +18,27 @@ The application supports three kinds of AI model sources:
 
 ---
 
+## Using NPU alongside an existing Ollama (hybrid mode)
+
+If you already have Ollama running with GPU or CPU models, you can add NPU
+inference **without touching your existing setup**.
+
+1. Open **Settings → AI Backend tab**.
+2. Change **Backend** from `ollama` to **`ollama+npu`**.
+3. Your Ollama server URL and models are unchanged — all your existing models remain visible in the **Models** tab.
+4. Go to **Settings → Models → NPU Catalog**, download an ONNX model (e.g. *Phi-3-vision*).
+5. The downloaded model appears alongside your Ollama models in the list.
+6. Select any model and click **✔ Use this model** to switch between GPU/CPU and NPU inference.
+
+Routing is automatic:
+
+- Model name ends with `.onnx` → AMD NPU via ONNX Runtime
+- Any other name → your Ollama server (GPU/CPU, ROCm, CUDA — whatever Ollama uses)
+
+No Ollama restart required; no configuration files need editing.
+
+---
+
 ## Opening the Settings / Model Manager
 
 1. Press the **Copilot key** (or `Ctrl+Alt+Space`) to open the assistant.

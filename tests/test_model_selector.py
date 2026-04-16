@@ -186,6 +186,22 @@ class TestGetCurrentModel:
         sel = ModelSelector(cfg)
         assert sel.get_current_model() == ""
 
+    def test_ollama_npu_npu_path_takes_priority(self):
+        cfg = MagicMock()
+        cfg.backend = "ollama+npu"
+        cfg.ollama  = {"model": "llama3:8b"}
+        cfg.npu     = {"model_path": "/path/to/model.onnx"}
+        sel = ModelSelector(cfg)
+        assert sel.get_current_model() == "/path/to/model.onnx"
+
+    def test_ollama_npu_falls_back_to_ollama_when_no_npu_path(self):
+        cfg = MagicMock()
+        cfg.backend = "ollama+npu"
+        cfg.ollama  = {"model": "llama3:8b"}
+        cfg.npu     = {"model_path": ""}
+        sel = ModelSelector(cfg)
+        assert sel.get_current_model() == "llama3:8b"
+
 
 class TestSetModel:
     def _make_config(self, backend):
@@ -212,6 +228,21 @@ class TestSetModel:
         cfg = self._make_config("npu")
         ModelSelector(cfg).set_model("/new/path.onnx")
         assert cfg._data["npu"]["model_path"] == "/new/path.onnx"
+
+    def test_set_ollama_npu_onnx_routes_to_npu(self):
+        cfg = self._make_config("ollama+npu")
+        ModelSelector(cfg).set_model("/path/to/model.onnx")
+        assert cfg._data["npu"]["model_path"] == "/path/to/model.onnx"
+        # Ollama model should be untouched
+        assert cfg._data["ollama"]["model"] == "old"
+
+    def test_set_ollama_npu_non_onnx_routes_to_ollama(self):
+        cfg = self._make_config("ollama+npu")
+        cfg._data["npu"]["model_path"] = "/prev/model.onnx"
+        ModelSelector(cfg).set_model("llama3:8b")
+        assert cfg._data["ollama"]["model"] == "llama3:8b"
+        # NPU path should be cleared so Ollama is used for next request
+        assert cfg._data["npu"]["model_path"] == ""
 
 
 class TestListModels:
@@ -261,6 +292,39 @@ class TestListModels:
         cfg = self._make_config("unknown_backend")
         sel = ModelSelector(cfg)
         assert sel.list_models().result() == []
+
+    def test_ollama_npu_returns_ollama_and_npu_models(self):
+        cfg = self._make_config("ollama+npu")
+        fake_resp = MagicMock()
+        fake_resp.json.return_value = {
+            "models": [{"name": "llama3:8b", "size": 0}]
+        }
+        fake_resp.raise_for_status = MagicMock()
+        with patch("requests.get", return_value=fake_resp):
+            models = ModelSelector(cfg).list_models().result()
+        names = [m.name for m in models]
+        assert "llama3:8b" in names
+        assert "/path/to/model.onnx" in names
+
+    def test_ollama_npu_without_npu_path_returns_only_ollama(self):
+        cfg = self._make_config("ollama+npu")
+        cfg.npu = {"model_path": ""}
+        fake_resp = MagicMock()
+        fake_resp.json.return_value = {
+            "models": [{"name": "llama3:8b", "size": 0}]
+        }
+        fake_resp.raise_for_status = MagicMock()
+        with patch("requests.get", return_value=fake_resp):
+            models = ModelSelector(cfg).list_models().result()
+        assert len(models) == 1
+        assert models[0].name == "llama3:8b"
+
+    def test_ollama_npu_ollama_unreachable_returns_only_npu(self):
+        cfg = self._make_config("ollama+npu")
+        with patch("requests.get", side_effect=Exception("Connection refused")):
+            models = ModelSelector(cfg).list_models().result()
+        assert len(models) == 1
+        assert models[0].name == "/path/to/model.onnx"
 
 
 class TestModelSummary:

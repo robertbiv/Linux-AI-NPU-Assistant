@@ -15,7 +15,7 @@ All settings are stored in `~/.config/linux-ai-npu-assistant/settings.json` (mod
 
 | Setting | JSON key | Default | Description |
 |---------|----------|---------|-------------|
-| Backend | `backend` | `ollama` | `ollama`, `openai`, or `npu` |
+| Backend | `backend` | `ollama` | `ollama`, `openai`, `npu`, or `ollama+npu` |
 | Ollama URL | `ollama.base_url` | `http://localhost:11434` | Ollama server URL |
 | Ollama model | `ollama.model` | `llava` | Model tag |
 | Ollama timeout | `ollama.timeout` | `120` | Seconds before request times out |
@@ -24,6 +24,34 @@ All settings are stored in `~/.config/linux-ai-npu-assistant/settings.json` (mod
 | OpenAI API key env | `openai.api_key_env` | `` | Env var holding the API key |
 | NPU model path | `npu.model_path` | `` | Path to `.onnx` file |
 | NPU provider | `npu.provider` | `VitisAIExecutionProvider` | ONNX EP |
+
+### `ollama+npu` — hybrid mode
+
+Choose **`ollama+npu`** if you already have Ollama running with GPU or CPU
+models and want to add NPU inference on top **without replacing anything**.
+
+How it works:
+
+- **All your existing Ollama models remain available** (GPU, CPU, ROCm, CUDA — whatever Ollama uses on your hardware).
+- **NPU models** you download via Settings → Models → NPU Catalog are available alongside them.
+- Requests are routed automatically:
+  - Selected model ends with `.onnx` → runs on the AMD NPU via ONNX Runtime.
+  - Any other model name → sent to your Ollama server as usual.
+
+To switch between a GPU model and an NPU model, open **Settings → Models**, pick any model from the combined list, and click **✔ Use this model**.  No server restart is needed.
+
+```json
+{
+  "backend": "ollama+npu",
+  "ollama": {
+    "base_url": "http://localhost:11434",
+    "model": "llama3.2:3b-instruct-q4_K_M"
+  },
+  "npu": {
+    "model_path": "/home/user/.local/share/linux-ai-npu-assistant/models/phi-3-v-128k-instruct-cpu-int4.onnx"
+  }
+}
+```
 
 ---
 

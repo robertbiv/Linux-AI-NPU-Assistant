@@ -209,6 +209,8 @@ class ModelSelector:
                     return self._list_openai(timeout)
                 elif backend == "npu":
                     return self._list_npu()
+                elif backend == "ollama+npu":
+                    return self._list_ollama_npu(timeout)
                 else:
                     logger.warning("Unknown backend %r; cannot list models.", backend)
                     return []
@@ -270,10 +272,30 @@ class ModelSelector:
             return []
         return [ModelInfo(name=model_path, raw={"path": model_path})]
 
+    def _list_ollama_npu(self, timeout: int) -> list[ModelInfo]:
+        """Hybrid listing: Ollama models followed by the installed NPU model (if any).
+
+        Ollama models are fetched from the configured server (GPU/CPU models).
+        The NPU model is appended if ``npu.model_path`` is set.  Both sets
+        are sorted alphabetically within their group so Ollama models come
+        first, then the NPU entry.
+        """
+        ollama_models: list[ModelInfo] = []
+        try:
+            ollama_models = self._list_ollama(timeout)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ollama+npu: could not reach Ollama server: %s", exc)
+
+        npu_models = self._list_npu()
+        return ollama_models + npu_models
+
     # ── Current model ─────────────────────────────────────────────────────────
 
     def get_current_model(self) -> str:
         """Return the model name currently configured for the active backend.
+
+        For the ``ollama+npu`` hybrid backend the active model is the NPU model
+        path when one is set, otherwise the Ollama model name.
 
         Returns an empty string if no model is configured.
         """
@@ -284,10 +306,20 @@ class ModelSelector:
             return self._config.openai.get("model", "")
         elif backend == "npu":
             return self._config.npu.get("model_path", "")
+        elif backend == "ollama+npu":
+            npu_path = self._config.npu.get("model_path", "")
+            if npu_path:
+                return npu_path
+            return self._config.ollama.get("model", "")
         return ""
 
     def set_model(self, model_name: str) -> None:
         """Update the in-memory config to use *model_name* for the active backend.
+
+        For the ``ollama+npu`` hybrid backend the model is routed to NPU when
+        *model_name* ends with ``.onnx`` (and the Ollama model key is left
+        untouched), or to Ollama for any other name (clearing
+        ``npu.model_path`` so that the next request goes to Ollama).
 
         This does **not** persist to disk automatically — call
         :meth:`~src.settings.SettingsManager.save` to write the change.
@@ -304,6 +336,12 @@ class ModelSelector:
             self._config._data["openai"]["model"] = model_name
         elif backend == "npu":
             self._config._data["npu"]["model_path"] = model_name
+        elif backend == "ollama+npu":
+            if model_name.endswith(".onnx"):
+                self._config._data["npu"]["model_path"] = model_name
+            else:
+                self._config._data["ollama"]["model"] = model_name
+                self._config._data["npu"]["model_path"] = ""
         logger.info("Model updated to %r (backend=%r)", model_name, backend)
 
     # ── NPU compatibility check ────────────────────────────────────────────────

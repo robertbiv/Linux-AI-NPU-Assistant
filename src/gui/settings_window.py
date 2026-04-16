@@ -357,7 +357,15 @@ if _HAS_QT:
         grp = QGroupBox("AI Backend")
         form = QFormLayout(grp)
         backend_combo = QComboBox()
-        backend_combo.addItems(["ollama", "openai", "npu"])
+        backend_combo.addItems(["ollama", "openai", "npu", "ollama+npu"])
+        backend_combo.setToolTip(
+            "ollama — use your existing Ollama server (GPU/CPU models)\n"
+            "openai — any local OpenAI-compatible server (LM Studio, llama.cpp, …)\n"
+            "npu    — AMD NPU ONNX model only\n"
+            "ollama+npu — hybrid: Ollama GPU/CPU models + NPU ONNX model.\n"
+            "             Requests are routed automatically: .onnx path → NPU,\n"
+            "             any other model name → Ollama."
+        )
         fields.append(_Field(backend_combo, "backend", manager))
         form.addRow("Backend:", backend_combo)
         layout.addWidget(grp)
