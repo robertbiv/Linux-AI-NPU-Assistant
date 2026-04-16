@@ -17,7 +17,7 @@ class TestNPUSession:
         """Return a mock onnxruntime module."""
         ort = MagicMock()
         ort.get_available_providers.return_value = available_providers or [
-            "VitisAIExecutionProvider", "CPUExecutionProvider"
+            "VitisAIExecutionProvider", "OpenVINOExecutionProvider", "QNNExecutionProvider", "CPUExecutionProvider"
         ]
         mock_session = MagicMock()
         mock_input = MagicMock()
@@ -168,6 +168,34 @@ class TestNPUManager:
         mgr = NPUManager(self._cfg())
         ort = MagicMock()
         ort.get_available_providers.return_value = ["VitisAIExecutionProvider"]
+        with patch.dict("sys.modules", {"onnxruntime": ort}):
+            assert mgr.is_npu_available() is True
+
+    def test_is_npu_available_openvino(self):
+        mgr = NPUManager(self._cfg())
+        ort = MagicMock()
+        ort.get_available_providers.return_value = ["OpenVINOExecutionProvider"]
+        with patch.dict("sys.modules", {"onnxruntime": ort}):
+            assert mgr.is_npu_available() is True
+
+    def test_is_npu_available_qnn(self):
+        mgr = NPUManager(self._cfg())
+        ort = MagicMock()
+        ort.get_available_providers.return_value = ["QNNExecutionProvider"]
+        with patch.dict("sys.modules", {"onnxruntime": ort}):
+            assert mgr.is_npu_available() is True
+
+    def test_is_npu_available_openvino(self):
+        mgr = NPUManager(self._cfg())
+        ort = MagicMock()
+        ort.get_available_providers.return_value = ["OpenVINOExecutionProvider"]
+        with patch.dict("sys.modules", {"onnxruntime": ort}):
+            assert mgr.is_npu_available() is True
+
+    def test_is_npu_available_qnn(self):
+        mgr = NPUManager(self._cfg())
+        ort = MagicMock()
+        ort.get_available_providers.return_value = ["QNNExecutionProvider"]
         with patch.dict("sys.modules", {"onnxruntime": ort}):
             assert mgr.is_npu_available() is True
 

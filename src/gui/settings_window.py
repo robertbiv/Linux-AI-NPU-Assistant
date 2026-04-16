@@ -410,7 +410,7 @@ if _HAS_QT:
         npu_form.addRow("ONNX model path:", npu_path)
 
         npu_provider = QLineEdit()
-        npu_provider.setPlaceholderText("VitisAIExecutionProvider")
+        npu_provider.setPlaceholderText("VitisAIExecutionProvider, OpenVINOExecutionProvider, QNNExecutionProvider")
         fields.append(_Field(npu_provider, "npu.provider", manager))
         npu_form.addRow("ONNX provider:", npu_provider)
         layout.addWidget(npu_grp)

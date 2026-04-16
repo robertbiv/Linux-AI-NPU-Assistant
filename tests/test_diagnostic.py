@@ -1,6 +1,5 @@
 """Tests for src/gui/diagnostic_reporter.py."""
 from __future__ import annotations
-import pytest
 from unittest.mock import MagicMock, patch
 from src.gui.diagnostic_reporter import (
     DiagnosticReporter,
@@ -66,6 +65,28 @@ class TestCheckNpu:
         mock_ort.__version__ = "1.18.0"
         mock_ort.get_available_providers.return_value = [
             "VitisAIExecutionProvider", "CPUExecutionProvider"
+        ]
+        with patch.dict("sys.modules", {"onnxruntime": mock_ort}):
+            r = DiagnosticReporter(_make_config()).check_npu()
+        assert r["available"] is True
+        assert r["status"] == STATUS_OK
+
+    def test_openvino_available(self):
+        mock_ort = MagicMock()
+        mock_ort.__version__ = "1.18.0"
+        mock_ort.get_available_providers.return_value = [
+            "OpenVINOExecutionProvider", "CPUExecutionProvider"
+        ]
+        with patch.dict("sys.modules", {"onnxruntime": mock_ort}):
+            r = DiagnosticReporter(_make_config()).check_npu()
+        assert r["available"] is True
+        assert r["status"] == STATUS_OK
+
+    def test_qnn_available(self):
+        mock_ort = MagicMock()
+        mock_ort.__version__ = "1.18.0"
+        mock_ort.get_available_providers.return_value = [
+            "QNNExecutionProvider", "CPUExecutionProvider"
         ]
         with patch.dict("sys.modules", {"onnxruntime": mock_ort}):
             r = DiagnosticReporter(_make_config()).check_npu()

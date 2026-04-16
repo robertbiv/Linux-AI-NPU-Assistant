@@ -163,12 +163,16 @@ class DiagnosticReporter:
             result["onnxruntime_version"] = ort.__version__
             providers = ort.get_available_providers()
             result["providers"] = providers
-            result["available"] = "VitisAIExecutionProvider" in providers
+            result["available"] = any(p in providers for p in (
+                "VitisAIExecutionProvider",
+                "OpenVINOExecutionProvider",
+                "QNNExecutionProvider"
+            ))
             result["status"]    = STATUS_OK if result["available"] else STATUS_WARN
             if not result["available"]:
                 result["error"] = (
-                    "VitisAIExecutionProvider not found. "
-                    "Install onnxruntime-vitisai for AMD NPU support."
+                    "No supported NPU execution provider found "
+                    "(checked VitisAI, OpenVINO, QNN)."
                 )
         except ImportError:
             result["status"] = STATUS_WARN

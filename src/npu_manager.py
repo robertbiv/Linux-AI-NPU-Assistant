@@ -59,7 +59,7 @@ class NPUSession:
         logger.debug("Available ONNX RT providers: %s", available)
 
         if providers is None:
-            providers = ["VitisAIExecutionProvider", "CPUExecutionProvider"]
+            providers = ["VitisAIExecutionProvider", "OpenVINOExecutionProvider", "QNNExecutionProvider", "CPUExecutionProvider"]
 
         # Filter to only providers that are actually available
         selected: list[Any] = []
@@ -162,20 +162,25 @@ class NPUManager:
     # ── Availability ──────────────────────────────────────────────────────────
 
     def is_npu_available(self) -> bool:
-        """Return *True* if the VitisAI Execution Provider is usable."""
+        """Return *True* if a usable NPU Execution Provider is detected."""
         if self._available is not None:
             return self._available
 
         try:
             import onnxruntime as ort  # type: ignore[import]
-            self._available = "VitisAIExecutionProvider" in ort.get_available_providers()
+            available = ort.get_available_providers()
+            self._available = any(p in available for p in (
+                "VitisAIExecutionProvider",
+                "OpenVINOExecutionProvider",
+                "QNNExecutionProvider"
+            ))
         except ImportError:
             self._available = False
 
         if self._available:
-            logger.info("AMD NPU (VitisAI EP) is available.")
+            logger.info("NPU is available.")
         else:
-            logger.info("AMD NPU not available; will use software backend.")
+            logger.info("NPU not available; will use software backend.")
 
         return self._available
 
@@ -248,7 +253,7 @@ class NPUManager:
                 model_path=model_path,
                 providers=self._config.get(
                     "providers",
-                    ["VitisAIExecutionProvider", "CPUExecutionProvider"],
+                    ["VitisAIExecutionProvider", "OpenVINOExecutionProvider", "QNNExecutionProvider", "CPUExecutionProvider"],
                 ),
                 vitisai_config=self._config.get("vitisai_config"),
             )

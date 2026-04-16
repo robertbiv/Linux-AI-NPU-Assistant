@@ -78,7 +78,7 @@ _DEFAULTS: dict[str, Any] = {
         #   model_path: "/path/to/my-model.onnx"
         "model_path": "",
         # Execution provider preference order (VitisAI first, then fallbacks)
-        "providers": ["VitisAIExecutionProvider", "CPUExecutionProvider"],
+        "providers": ["VitisAIExecutionProvider", "OpenVINOExecutionProvider", "QNNExecutionProvider", "CPUExecutionProvider"],
         # Ryzen AI config JSON expected by VitisAI EP
         "vitisai_config": "/opt/xilinx/xrt/share/vitis_ai_library/models/vitisai_ep_json_config.json",
         # Auto-download a model on first NPU use (disabled by default — use the GUI)

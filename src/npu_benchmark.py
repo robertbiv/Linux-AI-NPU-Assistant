@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -190,10 +189,15 @@ def _detect_npu_from_sys() -> tuple[bool, str, float]:
 
 
 def _detect_npu_from_onnx() -> bool:
-    """Return True when the VitisAI EP is available (AMD NPU)."""
+    """Return True when a usable NPU execution provider is available."""
     try:
         import onnxruntime as ort  # type: ignore[import]
-        return "VitisAIExecutionProvider" in ort.get_available_providers()
+        available = ort.get_available_providers()
+        return any(p in available for p in (
+            "VitisAIExecutionProvider",
+            "OpenVINOExecutionProvider",
+            "QNNExecutionProvider"
+        ))
     except ImportError:
         return False
 
