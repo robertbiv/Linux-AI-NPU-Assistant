@@ -9,6 +9,7 @@
 # Options
 #   -i, --install      Install the Flatpak for the current user after building.
 #   -r, --run          Run the app immediately after installing.
+#   --open             Alias for --install --run.
 #   -c, --clean        Delete the build directory before building.
 #   -o, --output DIR   Directory to place the finished .flatpak bundle
 #                      (default: ./dist).
@@ -65,6 +66,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -i|--install) INSTALL=true ;;
         -r|--run)     RUN_APP=true; INSTALL=true ;;
+        --open)       RUN_APP=true; INSTALL=true ;;
         -c|--clean)   CLEAN=true ;;
         -o|--output)  OUTPUT_DIR="${2:?--output requires a directory}"; shift ;;
         -h|--help)    usage ;;
@@ -169,4 +171,5 @@ echo "  Size   : ${BUNDLE_SIZE}"
 echo ""
 echo "  To install:  flatpak install --user ${BUNDLE}"
 echo "  To run:      flatpak run ${APP_ID}"
+echo "  To build and open: ./build-flatpak.sh --clean --open"
 echo ""
