@@ -184,7 +184,7 @@ if _HAS_QT:
             if checked:
                 self.selected.emit()
 
-        def mousePressEvent(self, event) -> None:  # noqa: ANN001
+        def mousePressEvent(self, event: "QMouseEvent") -> None:  # noqa: ANN001
             self._radio.setChecked(True)
             super().mousePressEvent(event)
 

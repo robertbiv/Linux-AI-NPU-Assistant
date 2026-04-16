@@ -10,15 +10,11 @@ def test_deep_merge():
 
 
 class TestIsRunningInFlatpak:
-    def test_false_when_no_env_and_no_file(self, tmp_path, monkeypatch):
+    def test_false_when_no_env_and_no_file(self, monkeypatch):
         monkeypatch.delenv("FLATPAK_ID", raising=False)
-        # Patch Path.exists so /.flatpak-info appears absent
-        import src.utils as utils_mod
-        with pytest.MonkeyPatch().context() as mp:
-            mp.delenv("FLATPAK_ID", raising=False)
-            from unittest.mock import patch
-            with patch("src.utils.Path.exists", return_value=False):
-                assert is_running_in_flatpak() is False
+        from unittest.mock import patch
+        with patch("src.utils.Path.exists", return_value=False):
+            assert is_running_in_flatpak() is False
 
     def test_true_when_flatpak_id_set(self, monkeypatch):
         monkeypatch.setenv("FLATPAK_ID", "io.github.robertbiv.LinuxAiNpuAssistant")

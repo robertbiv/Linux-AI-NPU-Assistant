@@ -170,8 +170,6 @@ To connect to it:
 
 ---
 
-
-
 For AMD Ryzen AI NPU access inside the sandbox you need to grant the app
 access to the NPU device nodes:
 
