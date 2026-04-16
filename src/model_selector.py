@@ -280,11 +280,15 @@ class ModelSelector:
         are sorted alphabetically within their group so Ollama models come
         first, then the NPU entry.
         """
+        import requests as _requests
+
         ollama_models: list[ModelInfo] = []
         try:
             ollama_models = self._list_ollama(timeout)
-        except Exception as exc:  # noqa: BLE001
+        except _requests.RequestException as exc:
             logger.warning("ollama+npu: could not reach Ollama server: %s", exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ollama+npu: unexpected error listing Ollama models: %s", exc)
 
         npu_models = self._list_npu()
         return ollama_models + npu_models

@@ -190,7 +190,7 @@ class TestAskOllamaNpu:
 
     def test_routes_to_ollama_when_non_onnx_model_set(self):
         cfg = self._make_hybrid_config(npu_model="")
-        cfg.npu = {"model_path": "llama3:8b"}  # non-.onnx path
+        cfg.npu = {"model_path": "llama3:8b"}  # non-.onnx Ollama model name
         assistant = AIAssistant(cfg)
         with patch.object(assistant, "_ask_npu", return_value=iter(["npu_tok"])) as npu_mock, \
              patch.object(assistant, "_ask_ollama", return_value=iter(["ol_tok"])) as ol_mock:
