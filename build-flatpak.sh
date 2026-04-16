@@ -18,10 +18,10 @@
 # -------------
 #   flatpak            https://flatpak.org/setup/
 #   flatpak-builder    usually packaged with flatpak or as a separate package
-#   org.gnome.Platform + org.gnome.Sdk runtime (version 46):
+#   org.gnome.Platform + org.gnome.Sdk runtime (version 48):
 #       flatpak remote-add --if-not-exists flathub \
 #           https://flathub.org/repo/flathub.flatpakrepo
-#       flatpak install flathub org.gnome.Platform//46 org.gnome.Sdk//46
+#       flatpak install flathub org.gnome.Platform//48 org.gnome.Sdk//48
 #
 # The finished bundle is exported to <output>/io.github.robertbiv.LinuxAiNpuAssistant.flatpak
 # and can be shared / sideloaded with:
@@ -36,6 +36,7 @@ MANIFEST="packaging/${APP_ID}.yml"
 BUILD_DIR=".flatpak-build"
 REPO_DIR=".flatpak-repo"
 OUTPUT_DIR="dist"
+GNOME_RUNTIME_VERSION="48"
 INSTALL=false
 RUN_APP=false
 CLEAN=false
@@ -91,12 +92,14 @@ check_cmd flatpak-builder \
     "Install it with 'apt install flatpak-builder' or 'flatpak install flatpak-builder'."
 
 # Check that the required GNOME runtime is present
-if ! flatpak info org.gnome.Sdk//46 &>/dev/null; then
-    warn "org.gnome.Sdk//46 runtime not found.  Attempting to install from Flathub…"
+if ! flatpak info "org.gnome.Sdk//${GNOME_RUNTIME_VERSION}" &>/dev/null; then
+    warn "org.gnome.Sdk//${GNOME_RUNTIME_VERSION} runtime not found.  Attempting to install from Flathub…"
     flatpak remote-add --user --if-not-exists flathub \
         https://flathub.org/repo/flathub.flatpakrepo || true
-    flatpak install --user -y flathub org.gnome.Platform//46 org.gnome.Sdk//46 \
-        || die "Could not install GNOME runtime.  Run manually:\n  flatpak install flathub org.gnome.Platform//46 org.gnome.Sdk//46"
+    flatpak install --user -y flathub \
+        "org.gnome.Platform//${GNOME_RUNTIME_VERSION}" \
+        "org.gnome.Sdk//${GNOME_RUNTIME_VERSION}" \
+        || die "Could not install GNOME runtime.  Run manually:\n  flatpak install flathub org.gnome.Platform//${GNOME_RUNTIME_VERSION} org.gnome.Sdk//${GNOME_RUNTIME_VERSION}"
 fi
 
 # ── Clean ─────────────────────────────────────────────────────────────────────

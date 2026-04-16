@@ -16,3 +16,9 @@ venv/
 .ruff_cache/
 *.log
 .coverage
+
+# Flatpak build artifacts
+build-dir/
+.flatpak-build/
+.flatpak-builder/
+.flatpak-repo/
