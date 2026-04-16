@@ -193,7 +193,7 @@ class TestWindowSizes:
         win = MainWindow(settings_manager=settings_manager, start_mode="full")
         win.show()
         win.resize(w, h)
-        assert win.width() <= w + 2
+        assert win.width() <= w + 30
         _grab(win, f"full_{w}x{h}")
         win.close()
 

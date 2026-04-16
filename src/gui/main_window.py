@@ -137,6 +137,7 @@ if _HAS_QT:
 
             # Expand button (⤢)
             expand_btn = QToolButton()
+            expand_btn.setFocusPolicy(Qt.StrongFocus)
             expand_btn.setText("⤢")
             expand_btn.setToolTip("Switch to full desktop mode")
             expand_btn.setFixedSize(30, 30)
@@ -146,21 +147,26 @@ if _HAS_QT:
                 f"  border-radius: 6px; color: {T.TEXT_SECONDARY}; font-size: 16px;"
                 f"}}"
                 f"QToolButton:hover {{ color: {T.GREEN}; border-color: {T.GREEN}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
             )
             expand_btn.clicked.connect(self.expand_clicked)
             layout.addWidget(expand_btn)
 
             # More (⋮)
             more_btn = QToolButton()
+            more_btn.setFocusPolicy(Qt.StrongFocus)
             more_btn.setText("⋮")
             more_btn.setToolTip("More options")
             more_btn.setFixedSize(30, 30)
             more_btn.setStyleSheet(
                 f"QToolButton {{"
-                f"  background: transparent; border: none;"
+                f"  background: transparent; border: 1px solid transparent; border-radius: 4px;"
                 f"  color: {T.TEXT_SECONDARY}; font-size: 20px;"
                 f"}}"
                 f"QToolButton:hover {{ color: {T.TEXT_PRIMARY}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
             )
             more_btn.clicked.connect(self.more_clicked)
             layout.addWidget(more_btn)
@@ -203,7 +209,7 @@ if _HAS_QT:
                 btn.setObjectName("navBtn")
                 btn.setStyleSheet(
                     f"QPushButton {{"
-                    f"  background: transparent; border: none; border-top: 2px solid transparent;"
+                    f"  background: transparent; border: 1px solid transparent; border-radius: 4px; border-top: 2px solid transparent;"
                     f"  color: {T.TEXT_MUTED}; font-size: 10px; letter-spacing: 0.5px;"
                     f"  padding: 6px 4px 2px 4px;"
                     f"}}"
