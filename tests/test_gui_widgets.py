@@ -128,6 +128,16 @@ class TestCompactMode:
         _grab(win, "compact_settings_tab")
         win.close()
 
+    def test_close_button_present(self, qapp, settings_manager):
+        from PyQt5.QtWidgets import QToolButton
+        from src.gui.main_window import MainWindow
+        win = MainWindow(settings_manager=settings_manager, start_mode="compact")
+        win.show()
+        header = win._compact_widget._header
+        buttons = header.findChildren(QToolButton)
+        assert any(btn.text() == "×" for btn in buttons)
+        win.close()
+
 
 # ── 2. Full mode ──────────────────────────────────────────────────────────────
 
@@ -391,23 +401,22 @@ class TestScreenshotTool:
         assert not result.error  # empty string or None = no error
         assert base64.b64decode(result.results[0].snippet) == fake
 
-    def test_opacity_order(self):
+    def test_opacity_callback_ignored(self):
         from src.tools.screenshot_tool import ScreenshotTool
         calls = []
         tool = ScreenshotTool(hide_opacity_fn=lambda v: calls.append(v))
         with patch("src.screen_capture.capture", return_value=b"\xff\xd8\xff"):
             tool.run({"save": False})
-        assert calls[0] == 0.0
-        assert calls[-1] == 1.0
+        assert calls == []
 
-    def test_opacity_restored_on_error(self):
+    def test_no_opacity_calls_on_error(self):
         from src.tools.screenshot_tool import ScreenshotTool
         calls = []
         tool = ScreenshotTool(hide_opacity_fn=lambda v: calls.append(v))
         with patch("src.screen_capture.capture", side_effect=RuntimeError("fail")):
             result = tool.run({"save": False})
         assert result.error  # non-empty string = error occurred
-        assert 1.0 in calls
+        assert calls == []
 
 
 # ── 7. StatusWidget ───────────────────────────────────────────────────────────
@@ -817,6 +826,17 @@ class TestSettingsWindow:
         for i in range(win._tabs.count()):
             win._tabs.setCurrentIndex(i)
             _grab(win, f"settings_tab_{win._tabs.tabText(i).lower()}")
+        win.close()
+
+    def test_backend_defaults_to_npu(self, qtbot, settings_manager):
+        from PyQt5.QtWidgets import QComboBox
+        from src.gui.settings_window import SettingsWindow
+        win = SettingsWindow(settings_manager)
+        qtbot.addWidget(win)
+        win.show()
+        backend_combos = [combo for combo in win.findChildren(QComboBox) if combo.findText("npu") >= 0 and combo.findText("ollama") >= 0]
+        assert backend_combos
+        assert backend_combos[0].currentText() == "npu"
         win.close()
 
 

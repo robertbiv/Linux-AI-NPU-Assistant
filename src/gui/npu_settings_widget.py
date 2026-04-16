@@ -647,39 +647,15 @@ if _HAS_QT:
             vc_header.addStretch()
             vc_layout.addLayout(vc_header)
 
-            themes_row = QHBoxLayout()
-            themes_row.setSpacing(10)
-            dark_card = _ThemeCard("neural_dark", "Neural Dark", dark=True, active=True)
-            dark_card.selected.connect(lambda tid: self._on_theme_selected(tid))
-            self._theme_cards["neural_dark"] = dark_card
-            themes_row.addWidget(dark_card)
-
-            light_card = _ThemeCard("pristine_light", "Pristine Light", dark=False, active=False)
-            light_card.selected.connect(lambda tid: self._on_theme_selected(tid))
-            self._theme_cards["pristine_light"] = light_card
-            themes_row.addWidget(light_card)
-            themes_row.addStretch()
-            vc_layout.addLayout(themes_row)
-
-            opacity_row = QHBoxLayout()
-            opacity_lbl = QLabel("Overlay Opacity")
-            opacity_lbl.setStyleSheet(
+            vc_note = QLabel(
+                "Visual styling follows the desktop environment and the app theme. "
+                "Opacity controls are not exposed because this platform does not support them reliably."
+            )
+            vc_note.setWordWrap(True)
+            vc_note.setStyleSheet(
                 f"color: {T.TEXT_SECONDARY}; font-size: 12px; background: transparent;"
             )
-            opacity_row.addWidget(opacity_lbl)
-            opacity_row.addStretch()
-            self._opacity_value_lbl = QLabel("92%")
-            self._opacity_value_lbl.setStyleSheet(
-                f"color: {T.TEXT_PRIMARY}; font-size: 12px; font-weight: bold; background: transparent;"
-            )
-            opacity_row.addWidget(self._opacity_value_lbl)
-            vc_layout.addLayout(opacity_row)
-
-            self._opacity_slider = QSlider(Qt.Horizontal)
-            self._opacity_slider.setRange(35, 100)
-            self._opacity_slider.setValue(92)
-            self._opacity_slider.valueChanged.connect(self._on_opacity_changed)
-            vc_layout.addWidget(self._opacity_slider)
+            vc_layout.addWidget(vc_note)
             layout.addWidget(vc_card)
 
             # ── Precision Instrument Mode ──────────────────────────────────
@@ -760,13 +736,6 @@ if _HAS_QT:
                 return
             auto_send = self._sm.get("ui.auto_send_screen", True)
             self._capture_toggle.setChecked(bool(auto_send))
-            opacity = float(self._sm.get("appearance.opacity", self._sm.get("ui.opacity", 0.92)))
-            pct = int(max(35, min(100, opacity * 100)))
-            self._opacity_slider.setValue(pct)
-            self._opacity_value_lbl.setText(f"{pct}%")
-
-            theme_id = self._sm.get("appearance.theme", "neural_dark")
-            self._set_theme_active(theme_id)
 
             for tool_name, toggle in self._tool_toggles.items():
                 toggle.set_value(self._tool_mode_from_settings(tool_name))
@@ -789,34 +758,12 @@ if _HAS_QT:
                     save=True,
                 )
 
-        def _on_theme_selected(self, theme_id: str) -> None:
-            if self._sm:
-                self._sm.set("appearance.theme", theme_id, save=True)
-            self._set_theme_active(theme_id)
-            logger.info("Theme selected: %s", theme_id)
-
-        def _set_theme_active(self, theme_id: str) -> None:
-            for tid, card in self._theme_cards.items():
-                border = T.GREEN if tid == theme_id else T.BORDER
-                card.setStyleSheet(
-                    card.styleSheet().replace(f"border: 2px solid {T.GREEN};", f"border: 2px solid {border};")
-                    .replace(f"border: 2px solid {T.BORDER};", f"border: 2px solid {border};")
-                )
-
-        def _on_opacity_changed(self, value: int) -> None:
-            self._opacity_value_lbl.setText(f"{value}%")
-            if self._sm:
-                self._sm.set("appearance.opacity", round(value / 100.0, 2), save=True)
-                self._sm.set("ui.opacity", round(value / 100.0, 2), save=True)
-
         def _on_model_selected(self, model_id: str) -> None:
             if self._sm is None:
                 return
-            self._sm.set("backend", "ollama", save=True)
-            if model_id == "mistral-7b-instruct":
-                self._sm.set("ollama.model", "mistral:7b-instruct", save=True)
-            else:
-                self._sm.set("ollama.model", "llama3.2:3b-instruct-q4_K_M", save=True)
+            self._sm.set("backend", "npu", save=True)
+            self._sm.set("npu.auto_install_default_model", True, save=True)
+            self._sm.set("npu.model_path", "auto", save=True)
 
         def _tool_mode_from_settings(self, tool_name: str) -> str:
             if self._sm is None:

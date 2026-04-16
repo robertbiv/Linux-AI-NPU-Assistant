@@ -357,9 +357,9 @@ if _HAS_QT:
         grp = QGroupBox("AI Backend")
         form = QFormLayout(grp)
         backend_combo = QComboBox()
-        backend_combo.addItems(["ollama", "openai", "npu"])
+        backend_combo.addItems(["npu", "ollama", "openai"])
         fields.append(_Field(backend_combo, "backend", manager))
-        form.addRow("Backend:", backend_combo)
+        form.addRow("Preferred backend:", backend_combo)
         layout.addWidget(grp)
 
         # Ollama
@@ -504,13 +504,6 @@ if _HAS_QT:
         width_spin.setSuffix(" px")
         fields.append(_Field(width_spin, "appearance.width", manager))
         form.addRow("Width:", width_spin)
-
-        opacity_spin = QDoubleSpinBox()
-        opacity_spin.setRange(0.3, 1.0)
-        opacity_spin.setSingleStep(0.05)
-        opacity_spin.setDecimals(2)
-        fields.append(_Field(opacity_spin, "appearance.opacity", manager))
-        form.addRow("Opacity:", opacity_spin)
 
         font_size_spin = QSpinBox()
         font_size_spin.setRange(0, 36)

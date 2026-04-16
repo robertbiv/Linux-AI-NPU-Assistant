@@ -46,12 +46,11 @@ logger = logging.getLogger(__name__)
 
 try:
     from PyQt5.QtCore import Qt, QPoint, QSize, QObject, pyqtSignal, pyqtSlot, QThread, QTimer
-    from PyQt5.QtGui import QColor, QFont
+    from PyQt5.QtGui import QColor, QCursor, QFont
     from PyQt5.QtWidgets import (
         QApplication,
         QFrame,
         QHBoxLayout,
-        QInputDialog,
         QLabel,
         QMainWindow,
         QMenu,
@@ -129,6 +128,7 @@ if _HAS_QT:
         expand_clicked  = pyqtSignal()
         more_clicked    = pyqtSignal()
         minimize_clicked = pyqtSignal()
+        close_clicked = pyqtSignal()
         model_clicked = pyqtSignal()
 
         def __init__(self, model_name: str = "Llama-3-NPU-8B", parent: QWidget | None = None) -> None:
@@ -239,6 +239,22 @@ if _HAS_QT:
             more_btn.clicked.connect(self.more_clicked)
             layout.addWidget(more_btn)
 
+            close_btn = QToolButton()
+            close_btn.setFocusPolicy(Qt.NoFocus)
+            close_btn.setText("×")
+            close_btn.setToolTip("Close")
+            close_btn.setFixedSize(30, 30)
+            close_btn.setStyleSheet(
+                f"QToolButton {{"
+                f"  background: {T.BG_CARD2}; border: 1px solid {T.BORDER};"
+                f"  border-radius: 6px; color: {T.TEXT_SECONDARY}; font-size: 18px;"
+                f"}}"
+                f"QToolButton:hover {{ color: {T.RED}; border-color: {T.RED}; }}"
+                f"QToolButton:pressed {{ background: {T.BG_HOVER}; }}"
+            )
+            close_btn.clicked.connect(self.close_clicked)
+            layout.addWidget(close_btn)
+
         def set_model_name(self, name: str) -> None:
             self._model_badge.setText(f"MODEL:  {name}  ▾")
 
@@ -329,6 +345,7 @@ if _HAS_QT:
 
         expand_clicked = pyqtSignal()
         more_clicked = pyqtSignal()
+        close_clicked = pyqtSignal()
         model_clicked = pyqtSignal()
 
         def __init__(
@@ -349,6 +366,7 @@ if _HAS_QT:
             self._header = _CompactHeader()
             self._header.expand_clicked.connect(self.expand_clicked)
             self._header.more_clicked.connect(self.more_clicked)
+            self._header.close_clicked.connect(self.close_clicked)
             self._header.model_clicked.connect(self.model_clicked)
             layout.addWidget(self._header)
 
@@ -460,6 +478,7 @@ if _HAS_QT:
             self._compact_widget = _CompactWidget(settings_manager=settings_manager)
             self._compact_widget.expand_clicked.connect(self.show_full)
             self._compact_widget.more_clicked.connect(self._show_compact_menu)
+            self._compact_widget.close_clicked.connect(self.close)
             self._compact_widget.model_clicked.connect(self._prompt_select_model)
             self._central.addWidget(self._compact_widget)  # index 0
 
@@ -558,32 +577,49 @@ if _HAS_QT:
             act_select_model = menu.addAction("Select model…")
             act_settings = menu.addAction("Advanced settings…")
             menu.addSeparator()
-            act_opacity_down = menu.addAction("Lower opacity")
-            act_opacity_up = menu.addAction("Increase opacity")
-            menu.addSeparator()
             act_toggle_mode = menu.addAction(
                 "Switch to full mode" if self._current_mode == MODE_COMPACT else "Switch to compact mode"
             )
 
             act_select_model.triggered.connect(self._prompt_select_model)
             act_settings.triggered.connect(self._open_advanced_settings)
-            act_opacity_down.triggered.connect(lambda: self._bump_opacity(-0.05))
-            act_opacity_up.triggered.connect(lambda: self._bump_opacity(0.05))
             act_toggle_mode.triggered.connect(
                 lambda: self.show_full() if self._current_mode == MODE_COMPACT else self.show_compact()
             )
 
-            header = self._compact_widget._header
-            pos = header.mapToGlobal(header.rect().bottomRight())
+            pos = QCursor.pos()
             self._compact_menu = menu
             menu.popup(pos)
 
-        def _bump_opacity(self, delta: float) -> None:
-            current = float(self._sm.get("appearance.opacity", self._sm.get("ui.opacity", 0.92))) if self._sm else 0.92
-            new_value = max(0.35, min(1.0, current + delta))
-            if self._sm:
-                self._sm.set("appearance.opacity", round(new_value, 2), save=True)
-            self.setWindowOpacity(new_value)
+        def _show_backend_menu(self) -> None:
+            if QApplication.platformName() == "offscreen":
+                return
+
+            menu = QMenu(self)
+            act_npu = menu.addAction("Use NPU (recommended)")
+            act_ollama = menu.addAction("Use Ollama / existing local engine")
+            act_openai = menu.addAction("Use OpenAI-compatible local engine")
+            menu.addSeparator()
+            act_settings = menu.addAction("Open backend settings…")
+
+            act_npu.triggered.connect(lambda: self._set_backend("npu"))
+            act_ollama.triggered.connect(lambda: self._set_backend("ollama"))
+            act_openai.triggered.connect(lambda: self._set_backend("openai"))
+            act_settings.triggered.connect(self._open_advanced_settings)
+
+            pos = QCursor.pos()
+            self._model_menu = menu
+            menu.popup(pos)
+
+        def _set_backend(self, backend: str) -> None:
+            if self._sm is None:
+                return
+            self._sm.set("backend", backend, save=True)
+            if backend == "npu":
+                if not self._sm.get("npu.model_path", ""):
+                    self._sm.set("npu.model_path", "auto", save=True)
+                self._sm.set("npu.auto_install_default_model", True, save=True)
+            self._sync_model_badge()
 
         def _open_advanced_settings(self) -> None:
             if QApplication.platformName() == "offscreen":
@@ -595,20 +631,7 @@ if _HAS_QT:
                 QMessageBox.warning(self, "Settings", f"Could not open settings window: {exc}")
 
         def _prompt_select_model(self) -> None:
-            if self._sm is None:
-                return
-            if QApplication.platformName() == "offscreen":
-                return
-            current = self._sm.get("ollama.model", "")
-            text, ok = QInputDialog.getText(
-                self,
-                "Select Model",
-                "Model name (Ollama/OpenAI) or ONNX path (NPU backend):",
-                text=str(current),
-            )
-            if not ok or not text.strip():
-                return
-            self._set_active_model(text.strip())
+            self._show_backend_menu()
 
         def _set_active_model(self, model_name: str) -> None:
             if self._sm is None:
@@ -725,20 +748,16 @@ if _HAS_QT:
                 model = self._sm.get("openai.model", "local-model")
             elif backend == "npu":
                 model = self._sm.get("npu.model_path", "npu-model")
-                model = str(model).split("/")[-1] if model else "npu-model"
+                model = "NPU" if not model or model == "auto" else str(model).split("/")[-1]
             else:
                 model = self._sm.get("ollama.model", "llava")
             self.set_model_name(str(model))
 
         def _apply_window_preferences(self) -> None:
-            if self._sm is None:
-                return
-            opacity = float(self._sm.get("appearance.opacity", self._sm.get("ui.opacity", 0.92)))
-            self.setWindowOpacity(max(0.35, min(1.0, opacity)))
+            return
 
         def _on_setting_changed(self, key_path: str, value: Any) -> None:
-            if key_path in {"appearance.opacity", "ui.opacity", "backend", "ollama.model", "openai.model", "npu.model_path"}:
-                self._apply_window_preferences()
+            if key_path in {"backend", "ollama.model", "openai.model", "npu.model_path"}:
                 self._sync_model_badge()
 
         def closeEvent(self, event) -> None:  # noqa: ANN001

@@ -4,13 +4,10 @@
 The tool is registered in the tool registry and may be invoked by the AI
 assistant (with user approval) or called directly by the UI on every send.
 
-No-flicker technique
---------------------
-Instead of hiding the application window (which causes a visible pop and
-compositor animation), the window's opacity is set to 0 so it is transparent
-to the screenshot but still occupies its position on the compositor layer.
-After the capture the opacity is restored.  The entire sequence happens in
-a single event-loop cycle so the user never sees a flicker.
+The capture path avoids changing window opacity because some platform
+plugins do not support it.  If the desktop environment or compositor cannot
+exclude the app window automatically, the screenshot is still captured
+without forcing transparency changes.
 
 Usage (as a Tool called by the AI)::
 
@@ -44,9 +41,8 @@ _SCREENSHOT_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "npu-assista
 class ScreenshotTool(Tool):
     """Capture the primary screen and return a base64-encoded JPEG.
 
-    The application window is made transparent before capture so it does not
-    appear in the screenshot.  A saved copy is also written to
-    ``$XDG_RUNTIME_DIR/npu-assistant-screenshots/``.
+    The application window is not forced transparent during capture.  A saved
+    copy is also written to ``$XDG_RUNTIME_DIR/npu-assistant-screenshots/``.
 
     Parameters accepted in *args*
     ------------------------------
@@ -88,17 +84,10 @@ class ScreenshotTool(Tool):
     }
 
     def __init__(self, hide_opacity_fn: "callable | None" = None) -> None:
+        """Initialise the tool.
+
+        The optional parameter is accepted for compatibility but ignored.
         """
-        Parameters
-        ----------
-        hide_opacity_fn:
-            Optional callable ``(opacity: float) -> None`` that adjusts the
-            application window's opacity before and after capture.  When
-            provided the window is made transparent (opacity=0) during capture
-            and restored (opacity=1) afterwards.  The UI layer should supply
-            this so the tool doesn't need a direct widget reference.
-        """
-        self._set_opacity = hide_opacity_fn
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -117,18 +106,11 @@ class ScreenshotTool(Tool):
 
         quality = max(1, min(95, quality))
 
-        # ── Hide window ──────────────────────────────────────────────────────
-        self._apply_opacity(0.0)
-
         try:
             jpeg_bytes = self._capture(monitor, quality)
         except Exception as exc:  # noqa: BLE001
-            self._apply_opacity(1.0)
             logger.error("Screenshot capture failed: %s", exc)
             return ToolResult(tool_name=self.name, error=str(exc))
-
-        # ── Restore window ───────────────────────────────────────────────────
-        self._apply_opacity(1.0)
 
         b64 = base64.b64encode(jpeg_bytes).decode("ascii")
 
@@ -151,46 +133,13 @@ class ScreenshotTool(Tool):
         monitor: int = 0,
         jpeg_quality: int = 75,
     ) -> bytes | None:
-        """Convenience method: hide *window*, capture screen, restore.
-
-        Returns raw JPEG bytes or ``None`` on failure.  Uses the
-        opacity-fade technique so there is no visible flicker.
-
-        Parameters
-        ----------
-        window:
-            A ``QWidget`` (or any object with ``setWindowOpacity(float)``
-            and ``update()``).  Pass ``None`` to skip the hide/show step.
-        monitor:
-            Monitor index for ``src.screen_capture.capture``.
-        jpeg_quality:
-            JPEG compression quality 1–95.
-        """
-        from PyQt5.QtWidgets import QApplication  # noqa: PLC0415
-
-        def _set_opacity(val: float) -> None:
-            if window is not None:
-                window.setWindowOpacity(val)
-                QApplication.processEvents()
-
-        _set_opacity(0.0)
+        """Convenience method: capture the screen and return JPEG bytes."""
         try:
             from src.screen_capture import capture  # noqa: PLC0415
             return capture(monitor=monitor, jpeg_quality=jpeg_quality)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Screen capture failed: %s", exc)
             return None
-        finally:
-            _set_opacity(1.0)
-
-    # ── Private ───────────────────────────────────────────────────────────────
-
-    def _apply_opacity(self, value: float) -> None:
-        if self._set_opacity is not None:
-            try:
-                self._set_opacity(value)
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("Could not set window opacity: %s", exc)
 
     @staticmethod
     def _capture(monitor: int, quality: int) -> bytes:

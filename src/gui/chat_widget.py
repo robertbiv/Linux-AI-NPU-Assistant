@@ -626,15 +626,7 @@ if _HAS_QT:
             self._screenshot_fn = fn
 
         def _take_screenshot(self) -> bytes | None:
-            """Capture the screen using the opacity-fade technique.
-
-            The application window's opacity is set to 0 (transparent) before
-            the capture so it does not appear in the screenshot, then restored
-            to 1 immediately.  This avoids any visible flicker because the
-            window is never hidden — it is simply transparent for one frame.
-
-            Returns raw JPEG bytes, or ``None`` on failure.
-            """
+            """Capture the screen and return raw JPEG bytes, or ``None``."""
             if self._screenshot_fn is not None:
                 try:
                     return self._screenshot_fn()
@@ -643,20 +635,9 @@ if _HAS_QT:
                     return None
 
             try:
-                from PyQt5.QtWidgets import QApplication  # noqa: PLC0415
-                win = self.window()
-                win.setWindowOpacity(0.0)
-                QApplication.processEvents()
-
                 from src.tools.screenshot_tool import ScreenshotTool  # noqa: PLC0415
                 data = ScreenshotTool._capture(monitor=0, quality=75)
             except Exception as exc:  # noqa: BLE001
                 logger.debug("Screenshot failed: %s", exc)
                 data = None
-            finally:
-                try:
-                    win.setWindowOpacity(1.0)
-                    QApplication.processEvents()
-                except Exception:  # noqa: BLE001
-                    pass
             return data

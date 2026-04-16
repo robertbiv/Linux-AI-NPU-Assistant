@@ -51,7 +51,7 @@ _DEFAULTS: dict[str, Any] = {
     # NOTE: "openai" here means any *local* OpenAI-compatible server such as
     # LM Studio (default port 1234) or llama.cpp server.  The application
     # blocks all external URLs by default (see network.allow_external above).
-    "backend": "ollama",
+    "backend": "npu",
     "ollama": {
         "base_url": "http://localhost:11434",
         "model": "llava",          # vision-capable model
@@ -76,13 +76,13 @@ _DEFAULTS: dict[str, Any] = {
         # After downloading, this is set automatically to the ONNX file path.
         # You can also point it at any local ONNX file:
         #   model_path: "/path/to/my-model.onnx"
-        "model_path": "",
+        "model_path": "auto",
         # Execution provider preference order (VitisAI first, then fallbacks)
         "providers": ["VitisAIExecutionProvider", "OpenVINOExecutionProvider", "QNNExecutionProvider", "CPUExecutionProvider"],
         # Ryzen AI config JSON expected by VitisAI EP
         "vitisai_config": "/opt/xilinx/xrt/share/vitis_ai_library/models/vitisai_ep_json_config.json",
         # Auto-download a model on first NPU use (disabled by default — use the GUI)
-        "auto_install_default_model": False,
+        "auto_install_default_model": True,
     },
     # ── Screen capture ────────────────────────────────────────────────────────
     "capture": {
@@ -104,8 +104,6 @@ _DEFAULTS: dict[str, Any] = {
         "max_height": 500,
         # Font size inside the overlay
         "font_size": 12,
-        # Opacity 0.0 (transparent) – 1.0 (opaque)
-        "opacity": 0.92,
         # Auto send screen
         "auto_send_screen": True,
     },
@@ -113,10 +111,8 @@ _DEFAULTS: dict[str, Any] = {
     "appearance": {
         "position": "center",
         "width": 700,
-        "opacity": 0.92,
         "font_size": 12,
         "always_on_top": True,
-        "theme": "neural_dark",
     },
     # ── Safety ────────────────────────────────────────────────────────────────
     "safety": {
