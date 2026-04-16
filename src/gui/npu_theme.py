@@ -55,7 +55,7 @@ QWidget {{
     color: {TEXT_PRIMARY};
     font-family: "Inter", "Segoe UI", "Roboto", sans-serif;
     font-size: 13px;
-    border: none;
+    border: 1px solid transparent; border-radius: 4px;
     outline: none;
 }}
 
@@ -66,7 +66,7 @@ QMainWindow, QDialog {{
 /* ── ScrollArea ────────────────────────────────────────────────────────── */
 QScrollArea {{
     background-color: transparent;
-    border: none;
+    border: 1px solid transparent; border-radius: 4px;
 }}
 QScrollArea > QWidget > QWidget {{
     background-color: transparent;
@@ -101,11 +101,19 @@ QPushButton:hover {{
 QPushButton:pressed {{
     background-color: {GREEN_DIM};
 }}
+QPushButton:focus, QToolButton:focus {{
+    border-color: {BLUE};
+    outline: none;
+}}
+QPushButton:focus, QToolButton:focus {{
+    border-color: {BLUE};
+    outline: none;
+}}
 
 QPushButton#sendBtn {{
     background-color: {BLUE};
     color: #ffffff;
-    border: none;
+    border: 1px solid transparent; border-radius: 4px;
     border-radius: 8px;
     padding: 8px 14px;
     font-size: 16px;
@@ -121,7 +129,7 @@ QPushButton#sendBtn:disabled {{
 
 QPushButton#navBtn {{
     background-color: transparent;
-    border: none;
+    border: 1px solid transparent; border-radius: 4px;
     border-radius: 0;
     color: {TEXT_SECONDARY};
     font-size: 10px;
@@ -154,7 +162,7 @@ QComboBox {{
     min-width: 80px;
 }}
 QComboBox::drop-down {{
-    border: none;
+    border: 1px solid transparent; border-radius: 4px;
     width: 20px;
 }}
 QComboBox::down-arrow {{

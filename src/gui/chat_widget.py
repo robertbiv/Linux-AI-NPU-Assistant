@@ -182,15 +182,18 @@ if _HAS_QT:
             reaction_row.setSpacing(6)
             for icon, tip in [("⧉", "Copy"), ("👍", "Like"), ("👎", "Dislike")]:
                 btn = QToolButton()
+                btn.setFocusPolicy(Qt.StrongFocus)
                 btn.setText(icon)
                 btn.setToolTip(tip)
                 btn.setStyleSheet(
                     f"QToolButton {{"
-                    f"  background: transparent; border: none;"
+                    f"  background: transparent; border: 1px solid transparent; border-radius: 4px;"
                     f"  color: {T.TEXT_MUTED}; font-size: 14px;"
                     f"  padding: 2px 4px;"
                     f"}}"
                     f"QToolButton:hover {{ color: {T.TEXT_SECONDARY}; }}"
+                    f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
+                    f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
                 )
                 if tip == "Copy":
                     btn.clicked.connect(lambda _, c=content: self._copy_to_clipboard(c))
@@ -415,15 +418,18 @@ if _HAS_QT:
             row.setSpacing(8)
 
             attach_btn = QToolButton()
+            attach_btn.setFocusPolicy(Qt.StrongFocus)
             attach_btn.setText("⚇")
             attach_btn.setToolTip("Attach file")
             attach_btn.setFixedSize(36, 36)
             attach_btn.setStyleSheet(
                 f"QToolButton {{"
-                f"  background: transparent; border: none;"
+                f"  background: transparent; border: 1px solid transparent; border-radius: 4px;"
                 f"  color: {T.TEXT_SECONDARY}; font-size: 18px;"
                 f"}}"
                 f"QToolButton:hover {{ color: {T.TEXT_PRIMARY}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
             )
             row.addWidget(attach_btn)
 

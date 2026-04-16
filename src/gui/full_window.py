@@ -85,7 +85,7 @@ if _HAS_QT:
                 f"QPushButton {{"
                 f"  background-color: transparent;"
                 f"  color: {T.TEXT_SECONDARY};"
-                f"  border: none;"
+                f"  border: 1px solid transparent; border-radius: 4px;"
                 f"  border-left: 3px solid transparent;"
                 f"  border-radius: 0;"
                 f"  text-align: left;"
@@ -198,12 +198,13 @@ if _HAS_QT:
 
             # ── Check updates button ──────────────────────────────────────
             update_btn = QPushButton("CHECK UPDATES")
+            update_btn.setToolTip("Check for and install application updates")
             update_btn.setFixedHeight(36)
             update_btn.setStyleSheet(
                 f"QPushButton {{"
                 f"  background-color: {T.BLUE};"
                 f"  color: #ffffff;"
-                f"  border: none;"
+                f"  border: 1px solid transparent; border-radius: 4px;"
                 f"  border-radius: 6px;"
                 f"  font-size: 11px;"
                 f"  font-weight: bold;"
@@ -293,7 +294,7 @@ if _HAS_QT:
                 btn.setFixedHeight(50)
                 btn.setStyleSheet(
                     f"QPushButton {{"
-                    f"  background: transparent; border: none;"
+                    f"  background: transparent; border: 1px solid transparent; border-radius: 4px;"
                     f"  border-bottom: 2px solid transparent;"
                     f"  color: {T.TEXT_SECONDARY if not is_active else T.TEXT_PRIMARY};"
                     f"  font-size: 11px; letter-spacing: 0.5px;"
@@ -333,15 +334,17 @@ if _HAS_QT:
 
             # Notification icon
             notif = QToolButton()
+            notif.setFocusPolicy(Qt.StrongFocus)
             notif.setText("🔔")
             notif.setToolTip("Notifications")
             notif.setStyleSheet(
-                f"QToolButton {{ background: transparent; border: none; font-size: 16px; }}"
+                f"QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 16px; }}"
             )
             layout.addWidget(notif)
 
             # Collapse / shrink button
             collapse_btn = QToolButton()
+            collapse_btn.setFocusPolicy(Qt.StrongFocus)
             collapse_btn.setText("⤡")
             collapse_btn.setToolTip("Switch to compact mode")
             collapse_btn.setFixedSize(30, 30)
@@ -351,6 +354,8 @@ if _HAS_QT:
                 f"  border-radius: 6px; color: {T.TEXT_SECONDARY}; font-size: 16px;"
                 f"}}"
                 f"QToolButton:hover {{ color: {T.TEXT_PRIMARY}; border-color: {T.GREEN}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
+                f"QToolButton:focus {{ border-color: {T.BLUE}; }}"
             )
             collapse_btn.clicked.connect(self.collapse_clicked)
             layout.addSpacing(6)
