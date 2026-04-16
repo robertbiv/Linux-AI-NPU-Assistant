@@ -126,7 +126,51 @@ The application data (settings, conversation history) is stored in:
 
 ---
 
-## NPU passthrough inside Flatpak
+## First-boot setup wizard
+
+On the very first launch the app shows a one-time setup wizard so you can
+choose your AI backend **without ever opening Settings**:
+
+| Choice | What it does |
+|--------|-------------|
+| **NPU — Self-contained** *(default)* | Uses the built-in AMD NPU via ONNX Runtime. No Ollama required. |
+| **Ollama — Connect to existing server** | Forwards requests to an Ollama server already running on your machine. |
+| **Both — NPU + Ollama (hybrid)** | NPU for `.onnx` models; Ollama for GPU/CPU models. |
+
+The wizard is shown only once. You can change the selection at any time in
+**Settings → AI Backend**.
+
+---
+
+## Connecting to your host Ollama (optional)
+
+The Flatpak uses `--share=network`, which means the sandbox shares the **host
+network namespace**.  Your host Ollama server at `http://localhost:11434` is
+therefore directly reachable from inside the Flatpak — no extra configuration
+is needed.
+
+To connect to it:
+
+1. Make sure Ollama is running on the host: `ollama serve`
+2. On first launch, pick **Ollama** or **Both** in the setup wizard, or
+   open **Settings → AI Backend** and select `ollama` or `ollama+npu`.
+3. Leave the **Server URL** as `http://localhost:11434` (the default).
+
+!!! tip "Custom Ollama port or address"
+    If your Ollama listens on a non-default port or address (e.g.
+    `http://localhost:12345` or a LAN address), update the **Server URL**
+    field in **Settings → AI Backend** accordingly.
+
+!!! note "Flatpak data directory"
+    Settings are stored inside the Flatpak data directory:
+    ```
+    ~/.var/app/io.github.robertbiv.LinuxAiNpuAssistant/config/linux-ai-npu-assistant/settings.json
+    ```
+    You can edit this file directly if needed.
+
+---
+
+
 
 For AMD Ryzen AI NPU access inside the sandbox you need to grant the app
 access to the NPU device nodes:

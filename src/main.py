@@ -14,7 +14,7 @@ import logging
 import sys
 
 from src.gui.main_window import MODE_COMPACT, MODE_FULL, open_main_window
-from src.settings import SettingsManager
+from src.settings import SettingsManager, _DEFAULT_SETTINGS_PATH
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -41,8 +41,16 @@ def main(argv: list[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
+    # Detect first boot BEFORE SettingsManager is constructed, so we can be
+    # sure the file-existence check reflects a genuinely fresh installation.
+    from src.gui.setup_wizard import needs_first_boot_setup, run_first_boot_wizard
+    is_first_boot = needs_first_boot_setup(_DEFAULT_SETTINGS_PATH)
+
     app = QApplication(sys.argv)
     settings_manager = SettingsManager()
+
+    if is_first_boot:
+        run_first_boot_wizard(app, settings_manager)
 
     window = open_main_window(
         settings_manager=settings_manager,

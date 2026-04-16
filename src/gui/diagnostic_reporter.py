@@ -111,6 +111,16 @@ class DiagnosticReporter:
             result["model"]  = self._config.npu.get("model_path", "")
             result["url"]    = "in-process"
             return result
+        elif backend == "ollama+npu":
+            # Hybrid: probe the Ollama endpoint; NPU is in-process.
+            cfg = self._config.ollama
+            base_url = cfg.get("base_url", "http://localhost:11434").rstrip("/")
+            result["url"]   = base_url
+            result["model"] = (
+                self._config.npu.get("model_path", "")
+                or cfg.get("model", "")
+            )
+            probe_url = f"{base_url}/api/tags"
         else:
             result["status"] = STATUS_FAIL
             result["error"]  = f"Unknown backend: {backend!r}"
