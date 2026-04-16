@@ -220,15 +220,14 @@ if _HAS_QT:
                     dir=dest_dir, prefix=f".{self._dest.name}.tmp."
                 )
                 tmp_path = Path(tmp_str)
-                os.close(fd)
 
-                with requests.get(
-                    self._url, stream=True, timeout=30, verify=True
-                ) as resp:
-                    resp.raise_for_status()
-                    total = int(resp.headers.get("content-length", 0))
-                    downloaded = 0
-                    with tmp_path.open("wb") as fh:
+                with os.fdopen(fd, "wb") as fh:
+                    with requests.get(
+                        self._url, stream=True, timeout=30, verify=True
+                    ) as resp:
+                        resp.raise_for_status()
+                        total = int(resp.headers.get("content-length", 0))
+                        downloaded = 0
                         for chunk in resp.iter_content(chunk_size=1024 * 1024):
                             if chunk:
                                 fh.write(chunk)
