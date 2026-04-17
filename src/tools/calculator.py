@@ -1,0 +1,118 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Calculator tool — safely evaluate mathematical expressions."""
+
+import ast
+import logging
+import math
+import operator
+from typing import Any
+
+from src.tools._base import SearchResult, Tool, ToolResult
+
+logger = logging.getLogger(__name__)
+
+# Allowed operators
+_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Pow: operator.pow,
+    ast.Mod: operator.mod,
+    ast.BitXor: operator.xor,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+# Allowed math functions and constants
+_MATH_NAMES = {
+    k: v for k, v in math.__dict__.items() if not k.startswith("_")
+}
+
+def _eval_ast(node: ast.AST) -> Any:
+    if isinstance(node, ast.Expression):
+        return _eval_ast(node.body)
+    elif isinstance(node, ast.Constant):
+        if isinstance(node.value, (int, float)):
+            return node.value
+        raise TypeError(f"Unsupported constant type: {type(node.value)}")
+    elif isinstance(node, ast.BinOp):
+        left = _eval_ast(node.left)
+        right = _eval_ast(node.right)
+        op = _OPERATORS.get(type(node.op))
+        if op is None:
+            raise TypeError(f"Unsupported operator: {type(node.op)}")
+        return op(left, right)
+    elif isinstance(node, ast.UnaryOp):
+        operand = _eval_ast(node.operand)
+        op = _OPERATORS.get(type(node.op))
+        if op is None:
+            raise TypeError(f"Unsupported unary operator: {type(node.op)}")
+        return op(operand)
+    elif isinstance(node, ast.Call):
+        func = _eval_ast(node.func)
+        args = [_eval_ast(arg) for arg in node.args]
+        if not callable(func):
+            raise TypeError(f"Unsupported function call: {func}")
+        return func(*args)
+    elif isinstance(node, ast.Name):
+        if node.id in _MATH_NAMES:
+            return _MATH_NAMES[node.id]
+        if node.id == "math":
+            return math
+        raise NameError(f"Unsupported variable/function: {node.id}")
+    elif isinstance(node, ast.Attribute):
+        # support math.pi etc
+        val = _eval_ast(node.value)
+        if val == math:
+            if hasattr(math, node.attr) and not node.attr.startswith("_"):
+                return getattr(math, node.attr)
+        raise AttributeError(f"Unsupported attribute: {node.attr}")
+    else:
+        raise TypeError(f"Unsupported AST node: {type(node)}")
+
+class CalculatorTool(Tool):
+    """Evaluate mathematical expressions safely."""
+
+    name = "calculate"
+    description = (
+        "Evaluate a mathematical expression safely. "
+        "Useful for arithmetic, trigonometry, and general math. "
+        "Supports standard Python math functions (e.g., sin, cos, sqrt, log)."
+    )
+    parameters_schema = {
+        "type": "object",
+        "properties": {
+            "expression": {
+                "type": "string",
+                "description": "The mathematical expression to evaluate (e.g., '2 + 2', 'math.sin(math.pi / 2)').",
+            },
+        },
+        "required": ["expression"],
+    }
+
+    def run(self, args: dict[str, Any]) -> ToolResult:
+        expr: str = args.get("expression", "").strip()
+        if not expr:
+            return ToolResult(tool_name=self.name, error="'expression' is required.")
+
+        try:
+            tree = ast.parse(expr, mode="eval")
+            result = _eval_ast(tree)
+
+            # format nicely
+            if isinstance(result, float) and result.is_integer():
+                result = int(result)
+
+            snippet = f"{expr} = {result}"
+            return ToolResult(
+                tool_name=self.name,
+                results=[SearchResult(path="calc", snippet=snippet)],
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Calculator error for '%s': %s", expr, exc)
+            return ToolResult(
+                tool_name=self.name,
+                error=f"Error evaluating expression: {exc}",
+            )
