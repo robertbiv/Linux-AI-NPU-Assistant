@@ -15,6 +15,9 @@ def _register_utility_tools(registry: ToolRegistry, cfg: dict, global_unload: bo
     from src.tools.regex_tool import RegexTool
     from src.tools.time_tool import TimeTool
     from src.tools.subnet_tool import SubnetTool
+    from src.tools.diff_tool import DiffTool
+    from src.tools.jwt_tool import JWTDecoderTool
+    from src.tools.encoding_tool import EncodingTool
 
     calc_cfg = cfg.get("calculator", {})
     calc_enabled = bool(calc_cfg.get("enabled", True))
@@ -63,6 +66,18 @@ def _register_utility_tools(registry: ToolRegistry, cfg: dict, global_unload: bo
     sub_cfg = cfg.get("subnet_calc", {})
     sub_enabled = bool(sub_cfg.get("enabled", True))
     sub_unload = bool(sub_cfg.get("unload_after_use", global_unload))
+
+    diff_cfg = cfg.get("diff_text", {})
+    diff_enabled = bool(diff_cfg.get("enabled", True))
+    diff_unload = bool(diff_cfg.get("unload_after_use", global_unload))
+
+    jwt_cfg = cfg.get("jwt_decode", {})
+    jwt_enabled = bool(jwt_cfg.get("enabled", True))
+    jwt_unload = bool(jwt_cfg.get("unload_after_use", global_unload))
+
+    enc_cfg = cfg.get("encoding", {})
+    enc_enabled = bool(enc_cfg.get("enabled", True))
+    enc_unload = bool(enc_cfg.get("unload_after_use", global_unload))
 
     if calc_enabled:
         registry.register_lazy(
@@ -161,6 +176,33 @@ def _register_utility_tools(registry: ToolRegistry, cfg: dict, global_unload: bo
             schema=SubnetTool.parameters_schema,
             factory=SubnetTool,
             unload_after_use=sub_unload,
+        )
+
+    if diff_enabled:
+        registry.register_lazy(
+            name=DiffTool.name,
+            description=DiffTool.description,
+            schema=DiffTool.parameters_schema,
+            factory=DiffTool,
+            unload_after_use=diff_unload,
+        )
+
+    if jwt_enabled:
+        registry.register_lazy(
+            name=JWTDecoderTool.name,
+            description=JWTDecoderTool.description,
+            schema=JWTDecoderTool.parameters_schema,
+            factory=JWTDecoderTool,
+            unload_after_use=jwt_unload,
+        )
+
+    if enc_enabled:
+        registry.register_lazy(
+            name=EncodingTool.name,
+            description=EncodingTool.description,
+            schema=EncodingTool.parameters_schema,
+            factory=EncodingTool,
+            unload_after_use=enc_unload,
         )
 
     if clip_enabled:

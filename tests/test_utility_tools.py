@@ -203,3 +203,47 @@ def test_more_tools_registered():
     assert "regex" in names
     assert "time_tool" in names
     assert "subnet_calc" in names
+
+from src.tools.diff_tool import DiffTool
+from src.tools.jwt_tool import JWTDecoderTool
+from src.tools.encoding_tool import EncodingTool
+import base64
+import json
+
+def test_diff_tool():
+    tool = DiffTool()
+    res = tool.run({"text_a": "apple\nbanana\ncherry", "text_b": "apple\nblueberry\ncherry"})
+    assert not res.error
+    assert "-banana" in res.results[0].snippet
+    assert "+blueberry" in res.results[0].snippet
+
+def test_jwt_tool():
+    # Construct a dummy JWT
+    header = base64.urlsafe_b64encode(json.dumps({"alg":"HS256"}).encode()).decode().rstrip("=")
+    payload = base64.urlsafe_b64encode(json.dumps({"sub":"123"}).encode()).decode().rstrip("=")
+    token = f"{header}.{payload}.signature"
+
+    tool = JWTDecoderTool()
+    res = tool.run({"token": token})
+    assert not res.error
+    assert "HS256" in res.results[0].snippet
+    assert "123" in res.results[0].snippet
+
+def test_encoding_tool_hex():
+    tool = EncodingTool()
+    res = tool.run({"format": "hex", "action": "encode", "text": "hello"})
+    assert not res.error
+    assert "68656c6c6f" in res.results[0].snippet
+
+def test_encoding_tool_binary():
+    tool = EncodingTool()
+    res = tool.run({"format": "binary", "action": "encode", "text": "a"})
+    assert not res.error
+    assert "01100001" in res.results[0].snippet
+
+def test_final_tools_registered():
+    registry = build_default_registry()
+    names = registry.names()
+    assert "diff_text" in names
+    assert "jwt_decode" in names
+    assert "encoding" in names
