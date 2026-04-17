@@ -300,6 +300,7 @@ if _HAS_QT:
             self._chk = QCheckBox(
                 "I have read and accept the Terms of Use for this model"
             )
+            self._chk.setAccessibleName("I have read and accept the Terms of Use for this model")
             self._chk.stateChanged.connect(self._on_check_changed)
             layout.addWidget(self._chk)
 

@@ -582,6 +582,7 @@ if _HAS_QT:
             th_layout.addLayout(th_slider_row)
 
             self._thermal_slider = QSlider(Qt.Horizontal)
+            self._thermal_slider.setAccessibleName("Thermal Threshold Slider")
             self._thermal_slider.setRange(60, 110)
             self._thermal_slider.setValue(85)
             self._thermal_slider.valueChanged.connect(self._on_thermal_changed)
@@ -594,6 +595,7 @@ if _HAS_QT:
             self._thermal_notify_cb = QCheckBox(
                 "Notify when NPU frequency throttles due to heat."
             )
+            self._thermal_notify_cb.setAccessibleName("Notify when NPU frequency throttles due to heat.")
             self._thermal_notify_cb.setChecked(True)
             self._thermal_notify_cb.setStyleSheet(
                 f"color: {T.TEXT_SECONDARY}; font-size: 12px; background: transparent;"

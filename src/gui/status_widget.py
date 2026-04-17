@@ -256,7 +256,7 @@ if _HAS_QT:
         lbl = QLabel(html)
         lbl.setTextFormat(Qt.RichText)
         lbl.setFont(QFont("Monospace", 10))
-        lbl.setStyleSheet(f"background: transparent; padding: 1px 0;")
+        lbl.setStyleSheet("background: transparent; padding: 1px 0;")
         return lbl
 
     # ── Main status widget ────────────────────────────────────────────────────
