@@ -125,9 +125,9 @@ class FindFilesTool(Tool):
             text=True,
             timeout=10,
         )
-        lines = [l.strip() for l in proc.stdout.splitlines() if l.strip()]
+        lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
         prefix = str(search_path)
-        return [l for l in lines if l.startswith(prefix)]
+        return [line for line in lines if line.startswith(prefix)]
 
     @staticmethod
     def _run_find(
@@ -149,7 +149,7 @@ class FindFilesTool(Tool):
                 text=True,
                 timeout=30,
             )
-            return [l.strip() for l in proc.stdout.splitlines() if l.strip()][:limit]
+            return [line.strip() for line in proc.stdout.splitlines() if line.strip()][:limit]
         except subprocess.TimeoutExpired:
             logger.warning("find timed out after 30 s; returning partial results.")
             return []
