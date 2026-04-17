@@ -157,6 +157,15 @@ class AIAssistant:
             )
         elif backend == "npu":
             yield from self._ask_npu(prompt, screenshot_jpeg)
+        elif backend == "ollama+npu":
+            yield from self._ask_ollama_npu(
+                prompt,
+                history,
+                screenshot_jpeg,
+                attachment_image_jpegs,
+                attachment_texts,
+                max_context_messages,
+            )
         else:
             raise ValueError(f"Unknown backend: {backend!r}")
 
@@ -390,6 +399,47 @@ class AIAssistant:
         except Exception as exc:
             logger.error("OpenAI API request failed: %s", exc)
             raise
+
+    # ── Hybrid Ollama + NPU backend ───────────────────────────────────────────
+
+    def _ask_ollama_npu(
+        self,
+        prompt: str,
+        history: "ConversationHistory | None",
+        screenshot_jpeg: bytes | None,
+        attachment_images: list[bytes] | None,
+        attachment_texts: list[str] | None,
+        max_context: int | None,
+    ) -> Iterator[str]:
+        """Route a request to either the NPU or Ollama based on the selected model.
+
+        When ``npu.model_path`` is set (and points to a ``.onnx`` file) the
+        request is sent to the AMD NPU via ONNX Runtime.  Otherwise the
+        request falls through to the Ollama backend so that all existing
+        GPU/CPU Ollama models continue to work unchanged.
+
+        This lets users keep their existing Ollama installation and add NPU
+        inference on top without any reconfiguration.
+        """
+        npu_path = self._config.npu.get("model_path", "")
+        if npu_path and npu_path.endswith(".onnx"):
+            logger.info(
+                "ollama+npu: routing to NPU (model=%s)", npu_path
+            )
+            yield from self._ask_npu(prompt, screenshot_jpeg)
+        else:
+            logger.info(
+                "ollama+npu: routing to Ollama (model=%s)",
+                self._config.ollama.get("model", ""),
+            )
+            yield from self._ask_ollama(
+                prompt,
+                history,
+                screenshot_jpeg,
+                attachment_images,
+                attachment_texts,
+                max_context,
+            )
 
     # ── NPU backend ───────────────────────────────────────────────────────────
 

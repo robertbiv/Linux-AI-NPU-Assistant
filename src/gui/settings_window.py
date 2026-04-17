@@ -369,7 +369,15 @@ if _HAS_QT:
         grp = QGroupBox("AI Backend")
         form = QFormLayout(grp)
         backend_combo = QComboBox()
-        backend_combo.addItems(["ollama", "openai", "npu"])
+        backend_combo.addItems(["ollama", "openai", "npu", "ollama+npu"])
+        backend_combo.setToolTip(
+            "ollama — use your existing Ollama server (GPU/CPU models)\n"
+            "openai — any local OpenAI-compatible server (LM Studio, llama.cpp, …)\n"
+            "npu — AMD NPU ONNX model only\n"
+            "ollama+npu — hybrid: Ollama GPU/CPU models + NPU ONNX model.\n"
+            "Requests are routed automatically: .onnx path → NPU,\n"
+            "any other model name → Ollama."
+        )
         fields.append(_Field(backend_combo, "backend", manager))
         form.addRow("Backend:", backend_combo)
         layout.addWidget(grp)
@@ -377,6 +385,24 @@ if _HAS_QT:
         # Ollama
         ollama_grp = QGroupBox("Ollama settings")
         ollama_form = QFormLayout(ollama_grp)
+
+        # Flatpak note — shown only when the app is running inside a sandbox.
+        # With --share=network the host's localhost:11434 is directly reachable.
+        try:
+            from src.utils import is_running_in_flatpak  # noqa: PLC0415
+            if is_running_in_flatpak():
+                flatpak_note = QLabel(
+                    "💡 Running inside Flatpak — your host Ollama at "
+                    "<b>localhost:11434</b> is accessible via the shared "
+                    "network namespace. The default URL below connects to it "
+                    "directly; no additional configuration is needed."
+                )
+                flatpak_note.setWordWrap(True)
+                flatpak_note.setStyleSheet("color: #8b90a2; font-size: 11px;")
+                ollama_form.addRow(flatpak_note)
+        except Exception:  # noqa: BLE001
+            pass
+
         ollama_url = QLineEdit()
         ollama_url.setPlaceholderText("http://localhost:11434")
         fields.append(_Field(ollama_url, "ollama.base_url", manager))

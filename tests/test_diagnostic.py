@@ -30,6 +30,23 @@ class TestCheckBackend:
         r   = DiagnosticReporter(cfg).check_backend()
         assert r["status"] == STATUS_FAIL
 
+    def test_ollama_npu_probes_ollama_url(self):
+        cfg = _make_config("ollama+npu")
+        cfg.npu = {"model_path": "/path/model.onnx"}
+        fake_req = MagicMock()
+        fake_req.status_code = 200
+        with patch("requests.get", return_value=fake_req) as mock_get:
+            r = DiagnosticReporter(cfg).check_backend(timeout=1)
+        assert r["status"] == STATUS_OK
+        # Probe URL should point at the Ollama /api/tags endpoint
+        assert mock_get.call_args[0][0].endswith("/api/tags")
+
+    def test_ollama_npu_fail_when_ollama_unreachable(self):
+        cfg = _make_config("ollama+npu")
+        with patch("requests.get", side_effect=Exception("refused")):
+            r = DiagnosticReporter(cfg).check_backend(timeout=1)
+        assert r["status"] == STATUS_FAIL
+
     def test_ollama_ok_on_200(self):
         cfg      = _make_config("ollama")
         fake_req = MagicMock()
