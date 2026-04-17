@@ -28,7 +28,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from src.tools._base import SearchResult, ToolResult
+from src.tools._base import SearchResult, Tool, ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ def _find_desktop_ids(name: str) -> list[str]:
     return ids
 
 
-class AppTool:
+class AppTool(Tool):
     """Open, search, and install applications."""
 
     name = "app"
@@ -241,7 +241,7 @@ class AppTool:
         "required": ["action", "name"],
     }
 
-    def run(self, args: dict[str, Any]):  # noqa: ANN201
+    def run(self, args: dict[str, Any]) -> ToolResult:
         action: str = args.get("action", "").strip().lower()
         name: str = args.get("name", "").strip()
 
@@ -296,7 +296,7 @@ class AppTool:
                     text=True,
                     timeout=20,
                 )
-                lines = [l.strip() for l in proc.stdout.splitlines() if l.strip()][:30]
+                lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()][:30]
                 for line in lines:
                     results.append(SearchResult(path="pkg_manager", snippet=line))
             except subprocess.TimeoutExpired:

@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.tools._base import SearchResult, ToolResult
+from src.tools._base import SearchResult, Tool, ToolResult
 from src.tools._utils import read_sys_file, run_command
 
 logger = logging.getLogger(__name__)
@@ -424,7 +424,7 @@ def _query_all() -> str:
 # ── Tool class ────────────────────────────────────────────────────────────────
 
 
-class SystemInfoTool:
+class SystemInfoTool(Tool):
     """Answer questions about the user's system hardware and software.
 
     Reads from ``/proc`` and ``/sys`` wherever possible (no subprocess
@@ -453,7 +453,7 @@ class SystemInfoTool:
         "required": ["topic"],
     }
 
-    def run(self, args: dict[str, Any]):  # noqa: ANN201
+    def run(self, args: dict[str, Any]) -> ToolResult:
         topic: str = args.get("topic", "").strip().lower()
         valid = set(_QUERIES) | {"all"}
         if topic not in valid:

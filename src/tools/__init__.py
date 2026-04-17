@@ -7,8 +7,6 @@ Each tool lives in its own module inside this package.  Import from here:
 """
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Callable
 
 from src.tools._base import (
     Tool,
