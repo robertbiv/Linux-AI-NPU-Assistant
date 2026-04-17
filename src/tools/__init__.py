@@ -21,6 +21,7 @@ from src.tools.registration.file_tools import _register_file_tools
 from src.tools.registration.web_tools import _register_web_tools
 from src.tools.registration.system_tools import _register_system_tools
 from src.tools.registration.app_tools import _register_app_tools
+from src.tools.registration.utility_tools import _register_utility_tools
 
 # Re-export so callers can do `from src.tools import ToolRegistry` etc.
 __all__ = [
@@ -61,5 +62,6 @@ def build_default_registry(tools_config: dict | None = None) -> ToolRegistry:
     _register_web_tools(registry, cfg)
     _register_system_tools(registry, cfg, global_unload)
     _register_app_tools(registry, cfg, global_unload)
+    _register_utility_tools(registry, cfg, global_unload)
 
     return registry
