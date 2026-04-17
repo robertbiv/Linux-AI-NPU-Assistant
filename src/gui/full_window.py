@@ -289,6 +289,7 @@ if _HAS_QT:
             self._tab_buttons: list[QPushButton] = []
             for i, crumb in enumerate(self._BREADCRUMBS):
                 btn = QPushButton(crumb)
+                btn.setAccessibleName(crumb)
                 btn.setCheckable(True)
                 is_active = i == 1  # OVERVIEW active by default
                 btn.setChecked(is_active)

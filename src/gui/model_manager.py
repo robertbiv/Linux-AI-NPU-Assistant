@@ -280,6 +280,7 @@ if _HAS_QT:
 
             # TOS summary
             summary_box = QTextEdit()
+            summary_box.setAccessibleName('Terms of Use Summary')
             summary_box.setReadOnly(True)
             summary_box.setPlainText(
                 self._entry.tos_summary
@@ -300,6 +301,7 @@ if _HAS_QT:
             self._chk = QCheckBox(
                 "I have read and accept the Terms of Use for this model"
             )
+            self._chk.setAccessibleName("I have read and accept the Terms of Use for this model")
             self._chk.stateChanged.connect(self._on_check_changed)
             layout.addWidget(self._chk)
 
@@ -817,6 +819,7 @@ if _HAS_QT:
             label = f"{badge} {model.name}{size_str}"
             item = QListWidgetItem(label)
             item.setData(Qt.UserRole, model)
+            item.setData(Qt.AccessibleTextRole, label)
             item.setToolTip(warning or "NPU compatible")
             item.setForeground(QColor(colour))
             self._list.addItem(item)
