@@ -320,8 +320,7 @@ class Config:
 def load(path: str | Path | None = None) -> Config:
     """Load configuration, merging user file over built-in defaults.
 
-    Parameters
-    ----------
+    Args:
     path:
         Explicit path to a ``config.yaml`` file.  When *None* the function
         searches :data:`_CONFIG_SEARCH_PATHS` in order and uses the first file

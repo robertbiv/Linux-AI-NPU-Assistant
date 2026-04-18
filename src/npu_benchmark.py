@@ -7,8 +7,7 @@ subprocess calls wherever possible, then maps the results to a
 to adjust which AI models are marked "excellent", "good", "fair", or
 "not_recommended" for this specific machine.
 
-NPU TOPS estimation heuristics
--------------------------------
+## NPU TOPS estimation heuristics
 AMD Ryzen AI 300 series (Strix Point)  →  50 TOPS
 AMD Ryzen AI 200 series (Hawk Point)   →  16 TOPS
 AMD Ryzen AI (Phoenix / Rembrandt)     →  10–12 TOPS
@@ -319,16 +318,14 @@ def _bump_fit(fit: str, delta: int) -> str:
 def adjust_npu_fit(static_fit: str, hw: HardwareCapabilities) -> str:
     """Return a hardware-adjusted NPU fit rating.
 
-    Parameters
-    ----------
+    Args:
     static_fit:
         The pre-defined catalog rating (``"excellent"`` / ``"good"`` /
         ``"fair"`` / ``"not_recommended"``).
     hw:
         :class:`HardwareCapabilities` for the current machine.
 
-    Returns
-    -------
+    Returns:
     str
         Adjusted fit rating — may be better or worse than *static_fit*.
     """

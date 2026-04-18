@@ -6,8 +6,7 @@ and is the **only** code that reads from / writes to the settings JSON file on
 disk.  Both the GUI settings page and every other module talk to this object;
 they never touch the file directly.
 
-Sync model
-----------
+## Sync model
 1. GUI widget changes a value  →  calls :meth:`set` / :meth:`set_nested`.
 2. :meth:`set` updates in-memory dict and calls :meth:`save`.
 3. :meth:`save` writes JSON atomically with owner-only (0o600) permissions.
@@ -72,8 +71,7 @@ def _set_nested(d: dict, key_path: str, value: Any) -> None:
 class SettingsManager:
     """Thread-safe settings manager with JSON persistence and change listeners.
 
-    Parameters
-    ----------
+    Args:
     path:
         Path to the ``settings.json`` file.  Created (with secure permissions)
         if it does not exist.  Pass ``None`` to disable persistence (useful in
@@ -185,8 +183,7 @@ class SettingsManager:
 
         Notifies all registered change listeners synchronously before returning.
 
-        Parameters
-        ----------
+        Args:
         key_path:
             Dot-separated path, e.g. ``"ollama.model"`` or ``"tools.allowed"``.
         value:
@@ -206,8 +203,7 @@ class SettingsManager:
     def set_many(self, changes: dict[str, Any]) -> None:
         """Apply multiple changes atomically and save once.
 
-        Parameters
-        ----------
+        Args:
         changes:
             Dict mapping dot-separated key paths to new values.
 
@@ -229,8 +225,7 @@ class SettingsManager:
     def update_section(self, section: str, values: dict) -> None:
         """Deep-merge *values* into an existing top-level *section* and save.
 
-        Parameters
-        ----------
+        Args:
         section:
             Top-level key (e.g. ``"tools"``, ``"ollama"``).
         values:

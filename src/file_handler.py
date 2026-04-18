@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """File and image reading utilities.
 
-Resource efficiency
--------------------
+## Resource efficiency
 - All file I/O is streamed; large files are read in chunks and the caller
   receives text/bytes incrementally rather than as one giant buffer.
 - Pillow is imported only at the point of image loading, not at module import.
@@ -106,8 +105,7 @@ def read_image_file(
     The image is down-scaled if either dimension exceeds *max_dimension* so
     that large photos don't consume excessive memory or network bandwidth.
 
-    Parameters
-    ----------
+    Args:
     path:
         Path to any image format supported by Pillow.
     jpeg_quality:
@@ -116,8 +114,7 @@ def read_image_file(
         If the image is larger than this in either dimension it is resized
         while preserving aspect ratio before encoding.
 
-    Returns
-    -------
+    Returns:
     bytes
         Raw JPEG bytes.  Delete the reference once forwarded to the AI.
     """
@@ -167,8 +164,7 @@ def load_attachment(
     ``data`` is JPEG bytes for images, a UTF-8 string for text, and raw bytes
     for binary files.
 
-    Raises
-    ------
+    Raises:
     FileNotFoundError
         If *path* does not exist.
     """

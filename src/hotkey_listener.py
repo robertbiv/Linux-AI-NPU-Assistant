@@ -40,8 +40,7 @@ _COPILOT_KEY_CODES: set[int] = {
 class HotkeyListener:
     """Background listener that triggers *callback* when the hotkey fires.
 
-    Parameters
-    ----------
+    Args:
     hotkey:
         Either the literal string ``"copilot"`` (scan for Copilot key via
         evdev) or a pynput hotkey string such as ``"<ctrl>+<alt>+space"``.

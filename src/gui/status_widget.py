@@ -14,8 +14,7 @@ All metric values can be pushed in via :meth:`StatusWidget.update_metrics`
 which accepts a plain dict so callers can populate it however they like
 (polling files in ``/sys``, onnxruntime callbacks, etc.).
 
-Usage
------
+## Usage
 ::
 
     widget = StatusWidget(parent=main_window)
@@ -515,7 +514,7 @@ if _HAS_QT:
         def update_metrics(self, metrics: dict[str, Any]) -> None:
             """Push new metric data into all panels.
 
-            Keys (all optional):
+            Keys:
 
             - ``npu_clock_pct``    — int 0-100
             - ``memory_used_gb``   — float

@@ -21,8 +21,7 @@ Toggle button
     switches to the other mode instantly while preserving all widget state
     (the AI conversation history, current page, etc.).
 
-Usage
------
+## Usage
 ::
 
     from src.settings import SettingsManager
@@ -319,8 +318,7 @@ if _HAS_QT:
         :meth:`show_compact` or :meth:`show_full` to set the initial mode,
         or let the default (compact) apply.
 
-        Parameters
-        ----------
+        Args:
         settings_manager:
             The application :class:`~src.settings.SettingsManager`.
         ai_assistant:
@@ -525,8 +523,7 @@ def open_main_window(
     Returns the :class:`MainWindow` instance (or ``None`` if PyQt5 is not
     installed).
 
-    Parameters
-    ----------
+    Args:
     settings_manager:
         Optional :class:`~src.settings.SettingsManager`.
     ai_assistant:

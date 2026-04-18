@@ -5,8 +5,7 @@ Supports two backends:
 - ``mss``   – fast, pure-Python, no external tools required (default)
 - ``scrot`` – uses the external ``scrot`` command-line tool
 
-Resource efficiency
--------------------
+## Resource efficiency
 All heavy imports (``mss``, ``PIL``) are deferred to the moment of capture so
 the module has zero import cost when idle.  Image bytes are returned as plain
 ``bytes`` objects; callers should delete or overwrite the reference as soon as
@@ -31,8 +30,7 @@ def capture(
 ) -> bytes:
     """Capture the screen and return JPEG image bytes.
 
-    Parameters
-    ----------
+    Args:
     method:
         ``"mss"`` (default) or ``"scrot"``.
     monitor:
@@ -41,8 +39,7 @@ def capture(
     jpeg_quality:
         JPEG compression quality (1 – 95).
 
-    Returns
-    -------
+    Returns:
     bytes
         Raw JPEG bytes of the captured screen.
     """
@@ -112,8 +109,7 @@ def capture_region(
 ) -> bytes:
     """Capture a rectangular region of the screen and return JPEG bytes.
 
-    Parameters
-    ----------
+    Args:
     x, y:
         Top-left corner of the region.
     width, height:
@@ -150,8 +146,7 @@ def image_to_base64(image_bytes: bytes) -> str:
 def load_image_as_jpeg(path: str | Path, jpeg_quality: int = 85) -> bytes:
     """Load an image file and convert it to JPEG bytes.
 
-    Parameters
-    ----------
+    Args:
     path:
         Path to any image format supported by Pillow.
     jpeg_quality:

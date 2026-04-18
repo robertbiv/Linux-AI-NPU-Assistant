@@ -9,8 +9,7 @@ file are always consistent.
 Desktop-environment theming is applied automatically via :mod:`src.gui.theme`
 before the dialog is shown.
 
-Usage
------
+## Usage
 ::
 
     from src.settings import SettingsManager
@@ -580,8 +579,7 @@ if _HAS_QT:
         All changes are written through :class:`~src.settings.SettingsManager`
         and persisted to ``settings.json`` immediately — no Apply button needed.
 
-        Parameters
-        ----------
+        Args:
         manager:
             The application :class:`~src.settings.SettingsManager` instance.
         parent:
@@ -658,8 +656,7 @@ if _HAS_QT:
 def open_settings(manager: Any, parent: object = None, history: "Any | None" = None) -> None:
     """Open the settings dialog (convenience function).
 
-    Parameters
-    ----------
+    Args:
     manager:
         The application :class:`~src.settings.SettingsManager`.
     parent:
@@ -668,8 +665,7 @@ def open_settings(manager: Any, parent: object = None, history: "Any | None" = N
         Optional :class:`~src.conversation.ConversationHistory` — enables
         the History tab controls (encryption, password, export, import).
 
-    Raises
-    ------
+    Raises:
     ImportError
         If PyQt5 is not installed.
     """

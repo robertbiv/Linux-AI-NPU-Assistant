@@ -9,8 +9,7 @@ The :class:`DiagnosticReporter` class is the main entry point.  Call
 :meth:`full_report` to get a single dict with all status information, or
 call individual ``check_*`` methods for targeted checks.
 
-Example
--------
+## Example
 ::
 
     >>> from src.diagnostic_reporter import DiagnosticReporter
@@ -46,8 +45,7 @@ _VERSION = "0.1.0"
 class DiagnosticReporter:
     """Collect live status information from all application subsystems.
 
-    Parameters
-    ----------
+    Args:
     config:
         The application :class:`~src.config.Config` object.
     registry:
@@ -71,8 +69,7 @@ class DiagnosticReporter:
     def check_backend(self, timeout: int = 3) -> dict[str, Any]:
         """Check connectivity to the AI backend.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: `status`, ``backend``, ``url``, ``model``,
             ``latency_ms``, ``error``.
@@ -138,8 +135,7 @@ class DiagnosticReporter:
     def check_npu(self) -> dict[str, Any]:
         """Check AMD NPU / ONNX Runtime availability.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: `status`, ``available``, ``providers``,
             ``onnxruntime_version``, ``model_path``, ``model_exists``,
@@ -185,8 +181,7 @@ class DiagnosticReporter:
     def check_tools(self) -> list[dict[str, Any]]:
         """Return status of every registered tool.
 
-        Returns
-        -------
+        Returns:
         list[dict]
             One dict per tool with keys: ``name``, `status`,
             ``loaded``, ``unload_after_use``, ``description``.
@@ -211,8 +206,7 @@ class DiagnosticReporter:
     def check_security(self) -> dict[str, Any]:
         """Run security checks on files and configuration.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: `status`, ``checks`` (list of individual check dicts),
             ``issues``.
@@ -277,8 +271,7 @@ class DiagnosticReporter:
     def check_settings(self) -> dict[str, Any]:
         """Check the settings file and manager status.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: `status`, ``path``, ``exists``, ``listener_count``,
             ``backend``, ``model``, ``error``.
@@ -314,8 +307,7 @@ class DiagnosticReporter:
     def check_system(self) -> dict[str, Any]:
         """Collect system information.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: `status`, ``os_name``, ``os_version``, ``distro_id``,
             ``package_manager``, ``desktop_environment``, ``shell``,
@@ -368,8 +360,7 @@ class DiagnosticReporter:
     def check_network(self) -> dict[str, Any]:
         """Check network configuration and local URL validity.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: `status`, ``allow_external``, ``backend_url``,
             ``backend_url_is_local``, ``error``.
@@ -413,8 +404,7 @@ class DiagnosticReporter:
     def check_dependencies(self) -> list[dict[str, Any]]:
         """Check availability of optional runtime dependencies.
 
-        Returns
-        -------
+        Returns:
         list[dict]
             One dict per dependency with keys: ``name``, `status`,
             ``version``, ``required``, ``detail``.
@@ -457,8 +447,7 @@ class DiagnosticReporter:
     def run_tests(self) -> dict[str, Any]:
         """Run the test suite programmatically and return a summary.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: `status`, ``passed``, ``failed``, ``errors``,
             ``total``, ``duration_s``, ``output``.
@@ -522,8 +511,7 @@ class DiagnosticReporter:
     def full_report(self) -> dict[str, Any]:
         """Collect all status checks and return a single aggregated dict.
 
-        Returns
-        -------
+        Returns:
         dict
             Keys: ``timestamp``, ``app_version``, ``overall_status``,
             ``backend``, ``npu``, ``tools``, ``security``, ``settings``,

@@ -5,8 +5,7 @@ This package provides PyQt5-based GUI components.  All modules use
 a conditional import pattern so that the rest of the application
 remains importable even when PyQt5 is not installed.
 
-Modules
--------
+## Modules
 npu_theme
     NPU dark-mode colour palette and global QSS stylesheet constants.
 main_window

@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """NPU model installer — default vision model + curated NPU-optimised catalog.
 
-Default bundled model
----------------------
+## Default bundled model
 The application ships with **Microsoft Phi-3-vision-128k-instruct** compiled to
 ONNX with INT4 weight quantisation as the *default* NPU model.  It is the only
 publicly available vision-capable ONNX model with an official AMD Ryzen AI NPU
@@ -23,15 +22,13 @@ Model provenance
 - Variant    : ``cpu-int4-rtn-block-32``
 - License    : MIT
 
-Model catalog
--------------
+## Model catalog
 :data:`MODEL_CATALOG` lists curated models that run well on AMD Ryzen AI NPUs.
 Each entry includes download instructions, an NPU-fit score, and a flag for
 vision capability.  Call :func:`install_model_from_catalog` to install any
 catalog entry.
 
-Usage
------
+## Usage
 ::
 
     from src.npu_model_installer import NPUModelInstaller, MODEL_CATALOG
@@ -70,7 +67,6 @@ class ModelCatalogEntry:
     """A single model in the curated NPU-recommended catalog.
 
     Attributes
-    ----------
     key:
         Unique short identifier used as the install sub-directory name.
     name:
@@ -170,15 +166,13 @@ class ModelCatalogEntry:
     def hardware_adjusted_npu_fit(self, hw: "Any | None" = None) -> str:
         """Return the NPU fit adjusted for the detected host hardware.
 
-        Parameters
-        ----------
+        Args:
         hw:
             A :class:`~src.npu_benchmark.HardwareCapabilities` instance.
             When ``None`` the hardware is probed automatically via
             :func:`~src.npu_benchmark.probe_hardware`.
 
-        Returns
-        -------
+        Returns:
         str
             One of ``"excellent"``, ``"good"``, ``"fair"``,
             ``"not_recommended"``.
@@ -558,8 +552,7 @@ class InstallError(Exception):
 class NPUModelInstaller:
     """Download and manage a single NPU model (default or catalog entry).
 
-    Parameters
-    ----------
+    Args:
     install_dir:
         Override the install directory.  Defaults to
         ``MODELS_ROOT / entry.key`` for the given *entry*.
@@ -633,8 +626,7 @@ class NPUModelInstaller:
     ) -> Path:
         """Download and install the model.
 
-        Parameters
-        ----------
+        Args:
         progress_callback:
             Optional callable receiving human-readable progress strings.
         skip_verify:
@@ -644,13 +636,11 @@ class NPUModelInstaller:
             not installed, :class:`InstallError` is raised with manual-install
             instructions.
 
-        Returns
-        -------
+        Returns:
         Path
             Path to the primary ONNX file.
 
-        Raises
-        ------
+        Raises:
         InstallError
             Download or verification failed.
         """
@@ -840,8 +830,7 @@ def install_model_from_catalog(
 ) -> Path:
     """Install a model from the catalog and return its ONNX path.
 
-    Parameters
-    ----------
+    Args:
     entry:
         A :class:`ModelCatalogEntry` from :data:`MODEL_CATALOG`.
     install_dir:
@@ -851,13 +840,11 @@ def install_model_from_catalog(
     allow_external:
         Allow downloading from the internet.
 
-    Returns
-    -------
+    Returns:
     Path
         Path to the primary ONNX file.
 
-    Raises
-    ------
+    Raises:
     InstallError
         Download or verification failed.
     """
@@ -890,8 +877,7 @@ def ensure_default_model(
     Returns ``None`` (and logs a warning) instead of raising so callers can
     fall back to the Ollama/OpenAI backend gracefully.
 
-    Parameters
-    ----------
+    Args:
     install_dir:
         Override the default install location.
     progress_callback:
@@ -899,8 +885,7 @@ def ensure_default_model(
     allow_external:
         Whether to allow downloading from the internet.
 
-    Returns
-    -------
+    Returns:
     Path | None
         Path to the ONNX file, or ``None`` if installation failed.
     """

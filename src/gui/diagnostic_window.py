@@ -6,8 +6,7 @@ data is collected by :class:`~src.gui.diagnostic_reporter.DiagnosticReporter`
 (pure Python, no Qt dependency), which means the data layer is fully
 unit-testable without a display.
 
-Features
---------
+## Features
 - **Status table** — colour-coded rows for Backend, NPU, Tools, Security,
   Settings, System, Network, Dependencies
 - **Security checks panel** — per-file permission results
@@ -17,8 +16,7 @@ Features
 - **Auto-refresh** every 30 seconds (configurable)
 - **Copy report** — copies the full JSON report to the clipboard
 
-Usage
------
+## Usage
 ::
 
     from src.gui.diagnostic_window import DiagnosticWindow
@@ -136,8 +134,7 @@ if _HAS_QT:
     class DiagnosticWindow(QDialog):
         """Live diagnostic dashboard.
 
-        Parameters
-        ----------
+        Args:
         config:
             The application :class:`~src.config.Config` object.
         registry:

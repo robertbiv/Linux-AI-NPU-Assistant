@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """System information tool — answer questions about the user's system.
 
-Queries answered
-----------------
+## Queries answered
 ``time``        Current local date and time.
 ``uptime``      How long the system has been running.
 ``battery``     Battery percentage, charging status, and time remaining.

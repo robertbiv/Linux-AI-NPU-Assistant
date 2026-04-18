@@ -49,7 +49,6 @@ class ScreenshotTool(Tool):
     ``$XDG_RUNTIME_DIR/npu-assistant-screenshots/``.
 
     Parameters accepted in *args*
-    ------------------------------
     monitor : int
         Monitor index.  ``0`` = virtual desktop (all monitors), ``1`` =
         primary physical monitor.  Default ``0``.
@@ -89,8 +88,7 @@ class ScreenshotTool(Tool):
 
     def __init__(self, hide_opacity_fn: "callable | None" = None) -> None:
         """
-        Parameters
-        ----------
+        Args:
         hide_opacity_fn:
             Optional callable ``(opacity: float) -> None`` that adjusts the
             application window's opacity before and after capture.  When
@@ -105,8 +103,7 @@ class ScreenshotTool(Tool):
     def run(self, args: dict[str, Any]) -> ToolResult:  # noqa: ANN201
         """Execute the screenshot capture.
 
-        Parameters
-        ----------
+        Args:
         args:
             Dict with optional keys: ``monitor`` (int), ``jpeg_quality`` (int),
             ``save`` (bool).
@@ -156,8 +153,7 @@ class ScreenshotTool(Tool):
         Returns raw JPEG bytes or ``None`` on failure.  Uses the
         opacity-fade technique so there is no visible flicker.
 
-        Parameters
-        ----------
+        Args:
         window:
             A ``QWidget`` (or any object with ``setWindowOpacity(float)``
             and ``update()``).  Pass ``None`` to skip the hide/show step.

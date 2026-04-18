@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Command execution with mandatory user confirmation.
 
-Safety model
-------------
+## Safety model
 1. Every shell command extracted from an AI response is shown to the user
    before anything runs.
 2. The user must explicitly type ``y`` / ``yes`` (or click Confirm in the UI)
@@ -12,8 +11,7 @@ Safety model
 4. Commands run in a short-lived subprocess that is reaped immediately;
    no process handles are kept open after the command finishes.
 
-Resource efficiency
--------------------
+## Resource efficiency
 - Subprocesses are created only when the user confirms — never speculatively.
 - ``subprocess.run`` (blocking) is used so the subprocess is reaped before
   the function returns, leaving no zombie or orphan processes.
@@ -42,8 +40,7 @@ _DOLLAR_LINE_RE = re.compile(r"^\$\s+(.+)$", re.MULTILINE)
 class CommandExecutor:
     """Extracts and safely executes shell commands from AI responses.
 
-    Parameters
-    ----------
+    Args:
     safety_config:
         The ``safety`` section from the application config.
     confirm_callback:
@@ -105,13 +102,11 @@ class CommandExecutor:
     def run_command(self, command: str) -> "CommandResult":
         """Ask for confirmation and run *command* if approved.
 
-        Parameters
-        ----------
+        Args:
         command:
             Raw shell command string.
 
-        Returns
-        -------
+        Returns:
         CommandResult
             Contains the exit code, stdout, and stderr.  The subprocess is
             fully reaped before this method returns.
