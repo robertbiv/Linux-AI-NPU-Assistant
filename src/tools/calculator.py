@@ -11,6 +11,12 @@ from src.tools._base import SearchResult, Tool, ToolResult
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_pow(a: Any, b: Any) -> Any:
+    if isinstance(b, (int, float)) and abs(b) > 10000:
+        raise ValueError("Exponent too large")
+    return operator.pow(a, b)
+
 # Allowed operators
 _OPERATORS = {
     ast.Add: operator.add,
@@ -18,7 +24,7 @@ _OPERATORS = {
     ast.Mult: operator.mul,
     ast.Div: operator.truediv,
     ast.FloorDiv: operator.floordiv,
-    ast.Pow: operator.pow,
+    ast.Pow: _safe_pow,
     ast.Mod: operator.mod,
     ast.BitXor: operator.xor,
     ast.USub: operator.neg,
