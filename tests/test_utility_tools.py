@@ -247,3 +247,11 @@ def test_final_tools_registered():
     assert "diff_text" in names
     assert "jwt_decode" in names
     assert "encoding" in names
+
+def test_calculator_dos():
+    from src.tools.calculator import CalculatorTool
+    tool = CalculatorTool()
+    # 9**9**9 should hit the safe_pow limit and not hang
+    res = tool.run({"expression": "9**9**9"})
+    assert res.error is not None
+    assert "Exponent too large" in res.error
