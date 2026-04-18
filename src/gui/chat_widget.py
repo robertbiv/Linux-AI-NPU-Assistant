@@ -8,8 +8,7 @@ widget that supports inline code-block rendering.
 The widget emits ``message_submitted(str)`` when the user presses Send or
 Enter so the parent can forward the text to the AI backend.
 
-Usage
------
+## Usage
 ::
 
     from src.gui.chat_widget import ChatWidget
@@ -354,8 +353,7 @@ if _HAS_QT:
     class ChatWidget(QWidget):
         """Full chat page widget.
 
-        Signals
-        -------
+        Signals:
         message_submitted(str):
             Emitted when the user sends a new message.
         """
@@ -583,8 +581,7 @@ if _HAS_QT:
         def set_screenshot_fn(self, fn: "Any | None") -> None:
             """Inject a custom screenshot callable (for testing or custom UI).
 
-            Parameters
-            ----------
+            Args:
             fn:
                 ``Callable[[], bytes | None]`` — called instead of the default
                 opacity-trick capture when ``ui.auto_send_screen`` is True.

@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Shell detection — find the user's login/interactive shell.
 
-Detection order
----------------
+## Detection order
 1. ``$SHELL`` environment variable (set by login daemons on every modern distro).
 2. ``/proc/<ppid>/exe`` — resolve the parent process executable.
 3. ``/etc/passwd`` entry for the current user.

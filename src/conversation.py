@@ -5,8 +5,7 @@ Messages are kept in a plain Python list so they are always available for
 context without any I/O.  The list is also written to a JSON file on disk
 (in the user's data directory) so prior conversations survive restarts.
 
-Design notes
-------------
+## Design notes
 - No database dependency; JSON is self-contained and human-readable.
 - Only text content is persisted.  Image attachments are *not* stored on
   disk (they can be large and are usually transient).  The ``has_image``
@@ -15,8 +14,7 @@ Design notes
   very long sessions.  Older messages are trimmed from the *front* (oldest
   first), preserving the most recent context.
 
-Encryption
-----------
+## Encryption
 Pass ``encrypt=True`` (the default when the ``cryptography`` package is
 installed) to store the history file as a Fernet-encrypted blob.  The
 symmetric key is kept in a separate ``history.key`` file in the same
@@ -68,8 +66,7 @@ def _fernet_available() -> bool:
 def generate_encryption_key() -> bytes:
     """Generate a new Fernet key (32 bytes, URL-safe base64-encoded).
 
-    Returns
-    -------
+    Returns:
     bytes
         A 44-byte URL-safe base64 string suitable for ``Fernet(key)``.
     """
@@ -84,13 +81,11 @@ def load_or_create_key(key_path: Path) -> bytes:
     only).  If the file already exists and has correct permissions its
     contents are returned unchanged.
 
-    Parameters
-    ----------
+    Args:
     key_path:
         Path to the ``history.key`` file.
 
-    Returns
-    -------
+    Returns:
     bytes
         The Fernet key bytes.
     """
@@ -133,8 +128,7 @@ def encrypt_data(plaintext: str, key: bytes) -> str:
 def decrypt_data(ciphertext: str, key: bytes) -> str:
     """Decrypt Fernet *ciphertext* and return the original plaintext.
 
-    Raises
-    ------
+    Raises:
     cryptography.fernet.InvalidToken
         If the key is wrong or the data was tampered with.
     """
@@ -154,8 +148,7 @@ def _derive_key_from_password(
     The random salt is stored in *key_dir/history.salt* (0o600).  Pass
     ``create_salt=False`` to skip creation (returns ``None`` if no salt file).
 
-    Parameters
-    ----------
+    Args:
     password:
         User-chosen password string.
     key_dir:
@@ -163,8 +156,7 @@ def _derive_key_from_password(
     create_salt:
         When ``True`` a new salt is generated if none exists yet.
 
-    Returns
-    -------
+    Returns:
     bytes | None
         A 44-byte URL-safe base64 Fernet key, or ``None`` when
         ``create_salt`` is ``False`` and no salt file exists.
@@ -227,8 +219,7 @@ class Message:
 class ConversationHistory:
     """Thread-safe, persistent conversation history.
 
-    Parameters
-    ----------
+    Args:
     max_messages:
         Maximum number of messages kept in memory.  When the list exceeds
         this limit the oldest messages are removed first.
@@ -314,8 +305,7 @@ class ConversationHistory:
     ) -> Message:
         """Append a message and persist immediately.
 
-        Parameters
-        ----------
+        Args:
         role:
             ``"user"`` or ``"assistant"``.
         content:
@@ -324,8 +314,7 @@ class ConversationHistory:
             Set to ``True`` when the turn included an image (screenshot or
             uploaded file).  The image itself is not stored here.
 
-        Returns
-        -------
+        Returns:
         Message
             The newly added message object.
         """
@@ -374,8 +363,7 @@ class ConversationHistory:
     ) -> list[dict]:
         """Return the message list in OpenAI ``/chat/completions`` format.
 
-        Parameters
-        ----------
+        Args:
         include_system:
             Prepend the system prompt if one is configured.
         max_context:
@@ -422,14 +410,12 @@ class ConversationHistory:
         file is updated.  The history is immediately re-written with the new
         key.
 
-        Parameters
-        ----------
+        Args:
         password:
             User-chosen password.  An empty string disables password-based
             encryption and falls back to the auto-generated random key.
 
-        Raises
-        ------
+        Raises:
         RuntimeError
             If the ``cryptography`` package is not installed.
         """
@@ -458,8 +444,7 @@ class ConversationHistory:
         Verifies that *old_password* correctly decrypts the current file
         before switching to *new_password*.
 
-        Raises
-        ------
+        Raises:
         ValueError
             If *old_password* is wrong (decryption fails).
         """
@@ -487,8 +472,7 @@ class ConversationHistory:
         The exported file is **not** protected by encryption or restricted
         permissions — callers are responsible for handling it securely.
 
-        Parameters
-        ----------
+        Args:
         export_path:
             Destination file path (will be created or overwritten).
         """
@@ -514,8 +498,7 @@ class ConversationHistory:
 
         Supports both plain-JSON exports and Fernet-encrypted ``.enc`` files.
 
-        Parameters
-        ----------
+        Args:
         import_path:
             Path to the file to import.  May be a plain-JSON file produced by
             :meth:`export_plaintext` or an encrypted ``.enc`` produced when
@@ -529,13 +512,11 @@ class ConversationHistory:
             existing history (deduplication by timestamp).  When ``False``
             (default) the current history is **replaced** by the imported one.
 
-        Returns
-        -------
+        Returns:
         int
             Number of messages successfully imported.
 
-        Raises
-        ------
+        Raises:
         FileNotFoundError
             If *import_path* does not exist.
         ValueError

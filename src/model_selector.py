@@ -8,8 +8,7 @@ to run efficiently on the AMD Ryzen AI NPU.
 All network calls respect the application's ``network.allow_external`` guard —
 model listings are fetched only from the locally configured backend URL.
 
-Example
--------
+## Example
 >>> selector = ModelSelector(config)
 >>> models = selector.list_models()
 >>> for m in models:
@@ -79,7 +78,6 @@ class ModelInfo:
     """Metadata about a single model available from the backend.
 
     Attributes
-    ----------
     name:
         Model identifier as returned by the backend (e.g. ``"llama3:8b-q4_K_M"``).
     size_bytes:
@@ -161,8 +159,7 @@ def _parse_model_info(name: str, raw: dict) -> ModelInfo:
 class ModelSelector:
     """List, select, and validate models for the configured AI backend.
 
-    Parameters
-    ----------
+    Args:
     config:
         The application :class:`~src.config.Config` object.
 
@@ -190,13 +187,11 @@ class ModelSelector:
         Returns a Future containing an empty list (with a log warning) when the backend is
         unreachable rather than raising an exception.
 
-        Parameters
-        ----------
+        Args:
         timeout:
             Seconds to wait for the backend to respond.
 
-        Returns
-        -------
+        Returns:
         concurrent.futures.Future[list[ModelInfo]]
             Future that resolves to models sorted alphabetically by name.
         """
@@ -292,8 +287,7 @@ class ModelSelector:
         This does **not** persist to disk automatically — call
         :meth:`~src.settings.SettingsManager.save` to write the change.
 
-        Parameters
-        ----------
+        Args:
         model_name:
             Model identifier accepted by the active backend.
         """
@@ -314,13 +308,11 @@ class ModelSelector:
         Returns ``None`` when no issues are detected (the model should run
         fine on the AMD Ryzen AI NPU or the current backend is not NPU).
 
-        Parameters
-        ----------
+        Args:
         model:
             A :class:`ModelInfo` instance or a bare model name string.
 
-        Returns
-        -------
+        Returns:
         str | None
             Human-readable warning, or ``None`` if no warning applies.
         """
@@ -398,8 +390,7 @@ class ModelSelector:
         sorted by NPU fit (best first).  Vision-capable models are listed
         before text-only models within the same fit tier.
 
-        Returns
-        -------
+        Returns:
         list[ModelCatalogEntry]
             Catalog entries rated ``"excellent"`` or ``"good"``.
 
@@ -417,8 +408,7 @@ class ModelSelector:
     def get_vision_model_suggestions() -> list[Any]:
         """Return only vision-capable models from the catalog.
 
-        Returns
-        -------
+        Returns:
         list[ModelCatalogEntry]
             Vision-capable catalog entries sorted by NPU fit.
 
@@ -436,8 +426,7 @@ class ModelSelector:
     def get_default_npu_model_info() -> dict[str, Any]:
         """Return metadata for the default bundled NPU vision model.
 
-        Returns
-        -------
+        Returns:
         dict
             Same keys as :meth:`NPUModelInstaller.model_info`.
         """

@@ -81,8 +81,7 @@ class ManPageTool(Tool):
     The tool is entirely offline: it reads man pages from the local system
     and never contacts any network resource.
 
-    Parameters
-    ----------
+    Args:
     max_chars:
         Maximum characters returned per call.  Defaults to 8 000, which is
         enough for SYNOPSIS + OPTIONS of most commands.

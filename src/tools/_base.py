@@ -107,8 +107,7 @@ class ToolPermissions:
     2. ``allowed``    — if non-empty, only tools in this set may run.
     3. ``requires_approval`` — tool may run, but only after the user confirms.
 
-    Parameters
-    ----------
+    Args:
     allowed:
         Whitelist of tool names the AI may call.  An empty set means *all*
         registered tools are allowed (subject to the disallowed list).
@@ -158,8 +157,7 @@ class ToolPermissions:
     def check(self, tool_name: str, args: dict) -> "ToolResult | None":
         """Enforce permissions for *tool_name* with *args*.
 
-        Returns
-        -------
+        Returns:
         ToolResult | None
             A ``ToolResult`` with an error message if the tool is blocked or
             the user declines.  ``None`` means the tool **may proceed**.
@@ -342,8 +340,7 @@ class ToolRegistry:
         Subsequent calls reuse the cached instance unless *unload_after_use*
         is ``True``, in which case the instance is released after every call.
 
-        Parameters
-        ----------
+        Args:
         name:
             Tool name used in ``[TOOL: name {...}]`` markers.
         description:
@@ -478,13 +475,11 @@ class ToolRegistry:
         5. If ``descriptor.unload_after_use`` is ``True``, release the
            instance immediately so memory is reclaimed.
 
-        Parameters
-        ----------
+        Args:
         call_text:
             Text containing a ``[TOOL: name {...}]`` marker.
 
-        Returns
-        -------
+        Returns:
         ToolResult | None
             Result of the tool call, or ``None`` if no marker was found.
         """

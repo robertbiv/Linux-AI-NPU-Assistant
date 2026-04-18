@@ -13,8 +13,7 @@ Implements the visual design from the NPU Assistant mockup:
 All changes are immediately forwarded to :class:`~src.settings.SettingsManager`
 so they persist to ``settings.json`` without any Apply button.
 
-Usage
------
+## Usage
 ::
 
     from src.settings import SettingsManager
@@ -400,8 +399,7 @@ if _HAS_QT:
     class NPUSettingsWidget(QWidget):
         """Settings page with NPU-themed cards matching the mockup design.
 
-        Parameters
-        ----------
+        Args:
         settings_manager:
             The application :class:`~src.settings.SettingsManager` instance.
             Can be ``None`` (settings are shown but not persisted).

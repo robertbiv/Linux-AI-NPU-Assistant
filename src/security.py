@@ -4,8 +4,7 @@
 All security-sensitive operations are consolidated here so they can be
 reviewed, tested, and updated in one place.
 
-Responsibilities
-----------------
+## Responsibilities
 - URL validation: block external hosts when ``network.allow_external`` is off.
 - Response sanitisation: strip control characters / oversized AI output before
   it reaches the UI or tool dispatcher.
@@ -66,8 +65,7 @@ def assert_local_url(url: str, allow_external: bool) -> None:
     """Raise :class:`ExternalNetworkBlockedError` if *url* is external and
     external traffic is not permitted.
 
-    Parameters
-    ----------
+    Args:
     url:
         Full URL to validate.
     allow_external:
@@ -108,16 +106,14 @@ def sanitize_ai_response(text: str, max_chars: int = _MAX_RESPONSE_CHARS) -> str
     - Removes C0/C1 control characters (keeps tab, newline, carriage-return).
     - Truncates to *max_chars* to prevent memory exhaustion from a runaway model.
 
-    Parameters
-    ----------
+    Args:
     text:
         Raw text received from the AI backend.
     max_chars:
         Maximum number of characters to return.  Text beyond this is silently
         dropped (the UI will show the truncation naturally during streaming).
 
-    Returns
-    -------
+    Returns:
     str
         Sanitised text, safe to display in the UI.
     """
@@ -142,8 +138,7 @@ def secure_write(path: str | Path, data: str, mode: int = 0o600) -> None:
     target is never partially written.  After the rename the file's mode is set
     to *mode* (default ``0o600`` — owner read/write only).
 
-    Parameters
-    ----------
+    Args:
     path:
         Destination file path.
     data:
@@ -188,8 +183,7 @@ def check_path_permissions(path: str | Path, label: str = "file") -> None:
     Sensitive files such as conversation history and config files should be
     readable only by the owning user (mode ``0o600`` or ``0o400``).
 
-    Parameters
-    ----------
+    Args:
     path:
         File to inspect.
     label:
@@ -215,8 +209,7 @@ def check_path_permissions(path: str | Path, label: str = "file") -> None:
 class RateLimiter:
     """Thread-safe token-bucket rate limiter for AI backend calls.
 
-    Parameters
-    ----------
+    Args:
     calls_per_minute:
         Maximum number of calls allowed per minute.  ``0`` disables limiting.
 
@@ -284,8 +277,7 @@ def validate_tool_args(args: dict[str, Any], schema: dict | None = None) -> dict
     - Optionally validates *args* against a JSON-schema ``properties`` map to
       ensure required fields are present and types match.
 
-    Parameters
-    ----------
+    Args:
     args:
         Raw argument dict supplied by the AI (already JSON-decoded).
     schema:
@@ -293,13 +285,11 @@ def validate_tool_args(args: dict[str, Any], schema: dict | None = None) -> dict
         presence and basic type checks; full JSON Schema validation is not
         performed.
 
-    Returns
-    -------
+    Returns:
     dict
         Sanitised copy of *args*.
 
-    Raises
-    ------
+    Raises:
     ValueError
         If a required field from the schema is missing.
     TypeError
@@ -405,13 +395,11 @@ def get_api_key_from_env(env_var: str) -> str:
     come from the process environment so it is not accidentally committed to
     version control.
 
-    Parameters
-    ----------
+    Args:
     env_var:
         Name of the environment variable to read.
 
-    Returns
-    -------
+    Returns:
     str
         The API key value, or an empty string if the variable is not set.
     """

@@ -4,8 +4,7 @@
 Embedded in the **Models** tab of :class:`~src.gui.settings_window.SettingsWindow`.
 Can also be used as a standalone dialog.
 
-Features
---------
+## Features
 Backend models (Ollama / OpenAI-compat)
     - Live list of models fetched from the active backend
     - Per-model NPU compatibility badge (✅ OK / ⚠ Warn / ⛔ No)
@@ -248,8 +247,7 @@ if _HAS_QT:
         The user must tick the acceptance checkbox before the OK button is
         enabled.  Clicking 'Read full terms' opens the TOS URL in the browser.
 
-        Parameters
-        ----------
+        Args:
         entry:
             The catalog entry whose TOS should be displayed.
         parent:
@@ -325,8 +323,7 @@ if _HAS_QT:
     class _CatalogCard(QFrame):
         """A single model entry card in the NPU catalog panel.
 
-        Signals
-        -------
+        Signals:
         download_requested(entry)
         remove_requested(entry)
         use_requested(entry, path)
@@ -548,8 +545,7 @@ if _HAS_QT:
     class NPUCatalogWidget(QWidget):
         """Scrollable panel showing all catalog models with Download/Remove/Use buttons.
 
-        Parameters
-        ----------
+        Args:
         settings_manager:
             The application :class:`~src.settings.SettingsManager`.
         parent:
@@ -1058,8 +1054,7 @@ if _HAS_QT:
     class ModelManagerWidget(QWidget):
         """Tabbed model manager combining the backend browser and NPU catalog.
 
-        Parameters
-        ----------
+        Args:
         manager:
             The application :class:`~src.settings.SettingsManager`.
         parent:

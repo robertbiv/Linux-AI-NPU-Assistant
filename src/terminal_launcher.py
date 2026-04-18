@@ -186,8 +186,7 @@ def open_with_command(command: str) -> tuple[bool, str]:
     Detects the user's shell and uses the appropriate pre-fill technique.
     Returns immediately (non-blocking).
 
-    Returns
-    -------
+    Returns:
     (success, message)
     """
     import subprocess

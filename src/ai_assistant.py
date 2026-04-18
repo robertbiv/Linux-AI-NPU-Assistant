@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """AI assistant backend — vision-capable LLM interaction.
 
-Supported backends
-------------------
+## Supported backends
 - **ollama**  – Local Ollama server (recommended; supports llava and other
   vision models out of the box).  Uses the ``/api/chat`` endpoint so
   conversation history is passed natively.
@@ -18,8 +17,7 @@ private-network addresses are accepted.  Any attempt to configure an external
 endpoint raises :class:`ExternalNetworkBlockedError` at request time so the
 check cannot be bypassed by a bad config file without explicitly opting in.
 
-Backend resource efficiency
----------------------------
+## Backend resource efficiency
 - ``requests`` is imported lazily; no persistent ``Session`` is kept between
   calls (``Connection: close`` is sent with every request so the socket is
   released immediately after the response).
@@ -54,8 +52,7 @@ __all__ = ["AIAssistant"]
 class AIAssistant:
     """Facade for talking to a vision-capable LLM backend.
 
-    Parameters
-    ----------
+    Args:
     config:
         The application :class:`~src.config.Config` object.
     npu_manager:
@@ -111,8 +108,7 @@ class AIAssistant:
         ``screenshot_jpeg`` and any attachment bytes once this function returns
         to free memory.
 
-        Parameters
-        ----------
+        Args:
         prompt:
             The user's natural-language question or instruction.
         history:
@@ -128,8 +124,7 @@ class AIAssistant:
             How many of the most recent past messages to include in the
             request.  ``None`` includes all of them.
 
-        Yields
-        ------
+        Yields:
         str
             Incremental response tokens as they arrive.
         """

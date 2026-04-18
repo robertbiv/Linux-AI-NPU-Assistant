@@ -26,8 +26,7 @@ class NPUSession:
             outputs = session.run(feeds)
         # session memory freed here
 
-    Parameters
-    ----------
+    Args:
     model_path:
         Path to a pre-compiled ONNX model.
     providers:
@@ -118,13 +117,11 @@ class NPUSession:
     def run(self, feeds: dict[str, Any]) -> list[Any]:
         """Run inference.
 
-        Parameters
-        ----------
+        Args:
         feeds:
             Dict mapping input names to numpy arrays.
 
-        Returns
-        -------
+        Returns:
         list
             Raw ONNX Runtime output tensors.
 
@@ -229,13 +226,11 @@ class NPUManager:
         and ``npu.auto_install_default_model`` is ``True``, it is downloaded
         automatically from Hugging Face on first call.
 
-        Parameters
-        ----------
+        Args:
         progress_callback:
             Optional callable receiving download-progress strings.
 
-        Returns
-        -------
+        Returns:
         NPUSession | None
             Loaded session, or ``None`` if no model is available.
         """
@@ -302,8 +297,7 @@ class NPUManager:
         the ONNX session is destroyed after the call so NPU/GPU memory is
         released straight away.
 
-        Parameters
-        ----------
+        Args:
         feeds:
             Dict mapping input names to numpy arrays.
         progress_callback:
@@ -321,8 +315,7 @@ class NPUManager:
     def get_session(self, progress_callback=None) -> "NPUSession | None":
         """Return the cached session, loading it if necessary.
 
-        Parameters
-        ----------
+        Args:
         progress_callback:
             Optional callable for download-progress messages on first run.
         """

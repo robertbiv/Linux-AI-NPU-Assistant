@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Application tool — open, search, and install apps.
 
-Actions
--------
+## Actions
 ``open``
     Launch an installed application by name.  Tries (in order):
     ``gtk-launch`` → desktop file ``Exec=`` field → plain binary exec.

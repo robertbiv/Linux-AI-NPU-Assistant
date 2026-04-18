@@ -6,8 +6,7 @@ Detects the running desktop environment from ``XDG_CURRENT_DESKTOP``,
 appropriate Qt style and colour palette so the assistant window blends
 naturally with the user's desktop.
 
-Supported desktop environments
--------------------------------
+## Supported desktop environments
 - **GNOME / Budgie / Pop!_OS** → Fusion style with Adwaita-inspired palette
 - **KDE Plasma / LXQt**        → native Qt style (Breeze used automatically)
 - **XFCE**                     → Fusion with neutral grey palette
@@ -21,8 +20,7 @@ The module is pure Python — Qt is imported lazily inside
 :func:`apply_to_app` only, so the rest of the codebase can import
 :mod:`src.gui.theme` without PyQt5 being installed.
 
-Example
--------
+## Example
 >>> from src.gui.theme import detect_desktop_environment, get_theme_for_de
 >>> de = detect_desktop_environment()
 >>> theme = get_theme_for_de(de)
@@ -86,7 +84,6 @@ class Theme:
     """Complete theme description for a desktop environment.
 
     Attributes
-    ----------
     de:
         Canonical DE name (e.g. ``"gnome"``, ``"kde"``, ``"xfce"``).
     style_name:
@@ -153,8 +150,7 @@ def detect_desktop_environment() -> str:
     2. ``DESKTOP_SESSION``
     3. ``GDMSESSION``
 
-    Returns
-    -------
+    Returns:
     str
         Lower-cased canonical DE name, e.g. ``"gnome"``, ``"kde"``,
         ``"xfce"``.  Returns ``"unknown"`` if detection fails.
@@ -176,7 +172,7 @@ def detect_desktop_environment() -> str:
 def _prefers_dark() -> bool:
     """Return ``True`` if the system colour scheme preference is dark.
 
-    Checks (in order):
+    Checks:
     - ``GTK_THEME`` env var containing "dark"
     - ``GNOME_DESKTOP_SESSION_ID`` heuristic
     - ``COLOR_SCHEME`` / ``GTK_APPLICATION_PREFER_DARK_THEME``
@@ -371,13 +367,11 @@ _DE_THEME_MAP: dict[str, "callable"] = {
 def get_theme_for_de(de: str) -> Theme:
     """Return a :class:`Theme` for the given desktop environment name.
 
-    Parameters
-    ----------
+    Args:
     de:
         Canonical DE name as returned by :func:`detect_desktop_environment`.
 
-    Returns
-    -------
+    Returns:
     Theme
         Fully populated theme object.  Falls back to Fusion if *de* is
         unrecognised.
@@ -403,21 +397,18 @@ def apply_to_app(app: object, theme: Theme | None = None) -> Theme:
 
     Imports PyQt5 lazily so this module is importable without Qt installed.
 
-    Parameters
-    ----------
+    Args:
     app:
         A ``PyQt5.QtWidgets.QApplication`` instance.
     theme:
         Theme to apply.  If ``None``, :func:`get_current_theme` is called
         automatically.
 
-    Returns
-    -------
+    Returns:
     Theme
         The theme that was applied (useful for inspection / testing).
 
-    Raises
-    ------
+    Raises:
     ImportError
         If PyQt5 is not installed.
     """

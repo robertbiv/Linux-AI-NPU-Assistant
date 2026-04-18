@@ -12,8 +12,7 @@ The window exposes :meth:`FullWindow.set_page` to switch pages programmatically
 and emits ``collapse_requested`` when the user clicks the ⤡ button to return
 to compact mode.
 
-Usage
------
+## Usage
 ::
 
     from src.gui.full_window import FullWindow
@@ -390,8 +389,7 @@ if _HAS_QT:
     class FullWindow(QWidget):
         """Full desktop-layout window for Neural Monolith.
 
-        Parameters
-        ----------
+        Args:
         settings_manager:
             Application :class:`~src.settings.SettingsManager` (optional).
         ai_assistant:
@@ -399,8 +397,7 @@ if _HAS_QT:
         parent:
             Optional parent widget.
 
-        Signals
-        -------
+        Signals:
         collapse_requested:
             Emitted when the user clicks the shrink / ⤡ button.
         """

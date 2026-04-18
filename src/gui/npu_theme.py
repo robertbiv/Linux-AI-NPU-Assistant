@@ -4,8 +4,7 @@
 Provides the "Neural Dark" visual theme used by the NPU Assistant main window.
 All colour constants are centralised here so they can be updated in one place.
 
-Colour roles
-------------
+## Colour roles
 - ``BG_MAIN``   — outermost window / page background (near-black)
 - ``BG_CARD``   — surface inside a card/panel (slightly lighter)
 - ``BG_INPUT``  — text input / code block background
