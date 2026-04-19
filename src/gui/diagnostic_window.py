@@ -109,6 +109,7 @@ if _HAS_QT:
     def _make_status_table(rows: list[tuple[str, str, str]]) -> QTableWidget:
         """Create a read-only table of (label, status, detail) rows."""
         table = QTableWidget(len(rows), 3)
+        table.setAccessibleName("Diagnostic Status Table")
         table.setHorizontalHeaderLabels(["Check", "Status", "Details"])
         table.horizontalHeader().setStretchLastSection(True)
         table.verticalHeader().setVisible(False)
