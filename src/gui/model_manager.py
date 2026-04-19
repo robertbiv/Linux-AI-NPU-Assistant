@@ -721,6 +721,7 @@ if _HAS_QT:
             layout = QVBoxLayout(self)
 
             self._list = QListWidget()
+            self._list.setAccessibleName("Available Models")
             self._list.setAlternatingRowColors(True)
             self._list.setSelectionMode(QListWidget.SingleSelection)
             self._list.currentItemChanged.connect(self._on_selection_changed)
